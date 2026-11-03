@@ -1,0 +1,52 @@
+{
+  "threshold": 0.85,
+  "ttl": "168h",
+  "max_entries": 50000,
+  "rate_limit": {
+    "capacity": 30,
+    "refill_per_sec": 2
+  },
+  "synonyms": {
+    "bhool": "reset",
+    "forgot": "reset",
+    "forget": "reset",
+    "gaya": "",
+    "kya": "",
+    "karu": "",
+    "kare": "",
+    "kaise": "",
+    "kab": "",
+    "milega": "",
+    "hai": "",
+    "mein": "",
+    "hoti": "",
+    "kitne": "",
+    "din": "",
+    "ka": "",
+    "ki": "",
+    "ko": "",
+    "delivery": "shipping",
+    "package": "shipping",
+    "arrive": "shipping",
+    "money": "refund",
+    "refunds": "refund",
+    "back": "",
+    "remove": "delete",
+    "permanently": "",
+    "stop": "cancel",
+    "plan": "subscription",
+    "timing": "hours",
+    "open": "hours",
+    "care": "support",
+    "customer": "",
+    "cant": "",
+    "log": "login",
+    "update": "",
+    "address": "",
+    "work": "",
+    "time": ""
+  },
+  "cors_origins": [
+    "*"
+  ]
+}

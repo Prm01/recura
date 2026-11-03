@@ -1,0 +1,27 @@
+# One-click deploy: https://render.com/deploy?repo=https://github.com/Prm01/sieve
+# Creates the gateway (Docker) and a Redis-compatible Key Value store on Render's free plan.
+services:
+  - type: web
+    name: sieve
+    runtime: docker
+    plan: free
+    healthCheckPath: /healthz
+    envVars:
+      - key: SIEVE_CONFIG
+        value: /examples/config.public.json
+      - key: SIEVE_REDIS_URL
+        fromService:
+          type: keyvalue
+          name: sieve-cache
+          property: connectionString
+      - key: SIEVE_ADMIN_KEY
+        generateValue: true
+      # Optional. Leave empty to run the public demo on the mock models.
+      - key: ANTHROPIC_API_KEY
+        sync: false
+
+  - type: keyvalue
+    name: sieve-cache
+    plan: free
+    maxmemoryPolicy: allkeys-lru
+    ipAllowList: []

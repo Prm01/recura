@@ -1,0 +1,11 @@
+{
+  "bhool": "reset", "forgot": "reset", "forget": "reset",
+  "gaya": "", "kya": "", "karu": "", "kare": "", "kaise": "", "kab": "", "milega": "",
+  "hai": "", "mein": "", "hoti": "", "kitne": "", "din": "", "ka": "", "ki": "", "ko": "",
+  "delivery": "shipping", "package": "shipping", "arrive": "shipping",
+  "money": "refund", "refunds": "refund", "back": "",
+  "remove": "delete", "permanently": "",
+  "stop": "cancel", "plan": "subscription",
+  "timing": "hours", "open": "hours", "care": "support", "customer": "",
+  "cant": "", "log": "login", "update": "", "address": "", "work": "", "time": ""
+}

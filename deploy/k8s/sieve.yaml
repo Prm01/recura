@@ -1,0 +1,93 @@
+# Minimal production layout: 3 gateway replicas sharing one Redis.
+# kubectl create secret generic sieve-secrets \
+#   --from-literal=ANTHROPIC_API_KEY=... --from-literal=SIEVE_ADMIN_KEY=... \
+#   --from-literal=SIEVE_API_KEYS='sk-team-a:team-a'
+# kubectl apply -f deploy/k8s/sieve.yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: sieve
+  labels: {app: sieve}
+spec:
+  replicas: 3
+  selector:
+    matchLabels: {app: sieve}
+  template:
+    metadata:
+      labels: {app: sieve}
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "8080"
+        prometheus.io/path: /metrics
+    spec:
+      securityContext:
+        runAsNonRoot: true
+      containers:
+        - name: sieve
+          image: ghcr.io/prm01/sieve:latest
+          ports: [{containerPort: 8080, name: http}]
+          env:
+            - {name: SIEVE_REDIS_URL, value: "redis://sieve-redis:6379/0"}
+            - {name: SIEVE_THRESHOLD, value: "0.85"}
+          envFrom:
+            - secretRef: {name: sieve-secrets}
+          readinessProbe:
+            httpGet: {path: /healthz, port: http}
+            periodSeconds: 5
+          livenessProbe:
+            httpGet: {path: /healthz, port: http}
+            periodSeconds: 15
+          resources:
+            requests: {cpu: 100m, memory: 128Mi}
+            limits: {memory: 512Mi}
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: sieve
+spec:
+  selector: {app: sieve}
+  ports: [{port: 80, targetPort: http, name: http}]
+---
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: sieve
+spec:
+  scaleTargetRef: {apiVersion: apps/v1, kind: Deployment, name: sieve}
+  minReplicas: 3
+  maxReplicas: 20
+  metrics:
+    - type: Resource
+      resource:
+        name: cpu
+        target: {type: Utilization, averageUtilization: 70}
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: sieve-redis
+spec:
+  replicas: 1
+  selector:
+    matchLabels: {app: sieve-redis}
+  template:
+    metadata:
+      labels: {app: sieve-redis}
+    spec:
+      containers:
+        - name: redis
+          image: redis:7-alpine
+          args: ["--appendonly", "yes"]
+          ports: [{containerPort: 6379}]
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: sieve-redis
+spec:
+  selector: {app: sieve-redis}
+  ports: [{port: 6379}]

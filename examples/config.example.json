@@ -1,0 +1,63 @@
+{
+  "addr": ":8080",
+  "redis_url": "redis://localhost:6379/0",
+  "threshold": 0.85,
+  "ttl": "168h",
+  "max_entries": 50000,
+  "sync_interval": "2s",
+  "max_prompt_chars": 8000,
+  "rate_limit": {
+    "capacity": 20,
+    "refill_per_sec": 1
+  },
+  "router": {
+    "timeout": "60s",
+    "failure_threshold": 3,
+    "cooldown": "30s"
+  },
+  "embedder": {
+    "type": "hash",
+    "dim": 512
+  },
+  "providers": [
+    {
+      "name": "claude",
+      "type": "anthropic",
+      "model": "claude-haiku-5-5",
+      "api_key_env": "ANTHROPIC_API_KEY"
+    },
+    {
+      "name": "openai",
+      "type": "openai",
+      "base_url": "https://api.openai.com/v1",
+      "model": "gpt-4o-mini",
+      "api_key_env": "OPENAI_API_KEY"
+    },
+    {
+      "name": "gemini",
+      "type": "gemini",
+      "model": "gemini-2.0-flash",
+      "api_key_env": "GEMINI_API_KEY"
+    },
+    {
+      "name": "local-llama",
+      "type": "openai",
+      "base_url": "http://localhost:11434/v1",
+      "model": "llama3.2"
+    }
+  ],
+  "api_keys": {
+    "sk-sieve-team-a": "team-a",
+    "sk-sieve-team-b": "team-b"
+  },
+  "admin_key": "change-me",
+  "synonyms": {
+    "bhool": "reset",
+    "forgot": "reset",
+    "kya": "",
+    "hai": ""
+  },
+  "cors_origins": [
+    "https://your-frontend.example"
+  ]
+}
