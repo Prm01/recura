@@ -21,6 +21,7 @@ var DefaultPatterns = []string{
 	`\b[A-Z]{5}\d{4}[A-Z]\b`,                           // PAN
 	`\b\d{4}\s?\d{4}\s?\d{4}\b`,                        // Aadhaar-like
 	`(?i)\b(password|otp|pin|cvv)\s*(is|:)\s*\S+`,      // secrets typed into a prompt
+	`\b[A-Za-z0-9._\-]{2,}@[A-Za-z]{2,}\b`,             // UPI ID
 }
 
 // Detector matches prompts against patterns.
