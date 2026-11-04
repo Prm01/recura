@@ -1,0 +1,10 @@
+{
+  "AWSEBDockerrunVersion": "1",
+  "Image": {
+    "Name": "ghcr.io/prm01/recura:latest",
+    "Update": "true"
+  },
+  "Ports": [
+    { "ContainerPort": 8080 }
+  ]
+}

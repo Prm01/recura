@@ -271,6 +271,8 @@ The public config ([`examples/config.public.json`](examples/config.public.json))
 
 ### Other options
 
+- **AWS Elastic Beanstalk:** an always-on single instance from the public image. See [deploy/elasticbeanstalk](deploy/elasticbeanstalk/README.md).
+
 - **Docker:** `docker run -p 8080:8080 ghcr.io/prm01/recura:latest`, or `docker build -t recura .` to build the distroless, non-root image yourself.
 - **Kubernetes:** [`deploy/k8s/recura.yaml`](deploy/k8s/recura.yaml) runs three replicas with an autoscaler, health probes and a read-only root filesystem.
 - **Any platform that runs a container:** set `RECURA_REDIS_URL` and at least one provider key.
