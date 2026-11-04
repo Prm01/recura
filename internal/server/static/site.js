@@ -2,7 +2,8 @@
 (function () {
   const root = document.documentElement;
   const KEY = "recura-theme";
-  try { const t = localStorage.getItem(KEY); if (t) root.dataset.theme = t; } catch (e) {}
+  let t = null; try { t = localStorage.getItem(KEY); } catch (e) {}
+  root.dataset.theme = t === "dark" ? "dark" : "light"; // light by default; dark only if the visitor chose it
 
   window.recura = window.recura || {};
   const toastEl = () => {
