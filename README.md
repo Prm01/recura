@@ -175,7 +175,7 @@ flowchart LR
     F -- miss --> R[Router]
     R --> P1[Claude]
     R -. retryable error or open breaker .-> P2[OpenAI]
-    R -. .-> P3[Gemini or local model]
+    R -. next fallback .-> P3[Gemini or local model]
     P1 & P2 & P3 --> S[Stream to client and store in cache]
     C <--> Redis[(Redis)]
     F <--> Redis
