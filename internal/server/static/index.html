@@ -202,6 +202,52 @@ section.s{scroll-margin-top:62px}
 @media (max-width:860px){.author{grid-template-columns:1fr}}
 .reveal{animation:rise .7s cubic-bezier(.2,.8,.2,1) both}
 @keyframes rise{from{opacity:.001;transform:translateY(12px)}to{opacity:1;transform:none}}
+
+/* live flow */
+.flow{padding-block:clamp(40px,6vw,64px) 0}
+.flowcard{position:relative;background:var(--term);border-radius:20px;border:1px solid color-mix(in srgb,var(--term) 60%,var(--line));overflow:hidden}
+.flowcard canvas{display:block;width:100%;height:280px}
+.flowhead{position:absolute;top:16px;left:20px;right:20px;display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;pointer-events:none}
+.flowhead .t{font:600 15px var(--body);color:var(--term-ink)}
+.flowhead .t small{display:block;font:12px var(--mono);color:var(--term-dim);margin-top:2px}
+.flowhead .lg{display:flex;gap:14px;flex-wrap:wrap;font:12px var(--mono);color:var(--term-dim);align-items:center}
+.flowhead .lg span{display:inline-flex;gap:6px;align-items:center}
+.flowhead .lg i{width:8px;height:8px;border-radius:50%}
+.flowmode{position:absolute;bottom:14px;left:20px;font:12px var(--mono);color:var(--term-dim);display:flex;gap:8px;align-items:center}
+.flowmode i{width:7px;height:7px;border-radius:50%;background:var(--term-dim)}
+.flowmode.live i{background:#2FA674;box-shadow:0 0 0 3px rgba(47,166,116,.25)}
+.flowcount{position:absolute;bottom:12px;right:20px;display:flex;gap:18px;font:12px var(--mono);color:var(--term-dim)}
+.flowcount b{color:var(--term-ink);font-weight:500;font-variant-numeric:tabular-nums}
+@media (max-width:640px){.flowcard canvas{height:300px}.flowhead .lg{display:none}.flowcount{gap:10px}}
+
+/* calculator */
+.calc{display:grid;grid-template-columns:1fr 1.15fr;gap:18px;align-items:stretch}
+.calc>*{min-width:0}
+.inputs{display:grid;gap:22px;align-content:start}
+.field label{display:flex;justify-content:space-between;gap:10px;font-size:14.5px;margin-bottom:8px}
+.field label output{font:600 14px var(--mono);font-variant-numeric:tabular-nums}
+.field input[type=range]{width:100%;accent-color:var(--accent)}
+.field small{display:block;font-size:12.5px;color:var(--muted);margin-top:6px}
+.money{display:flex;gap:8px;align-items:center}
+.money input{flex:1;min-width:0;font:15px var(--mono);color:var(--ink);background:var(--bg);border:1px solid var(--line);border-radius:9px;padding:9px 12px}
+.money input:focus{outline:none;border-color:var(--ink)}
+.seg{display:inline-flex;border:1px solid var(--line);border-radius:9px;overflow:hidden;flex:none}
+.seg button{border:0;background:transparent;padding:9px 12px;font:600 13px var(--mono);color:var(--muted)}
+.seg button[aria-pressed="true"]{background:var(--ink);color:var(--bg)}
+.outcome{background:var(--term);color:var(--term-ink);border:1px solid color-mix(in srgb,var(--term) 60%,var(--line));border-radius:var(--radius);padding:clamp(22px,3vw,32px);display:grid;gap:22px;align-content:start}
+.outcome .label{color:var(--term-dim)}
+.big{font:800 clamp(44px,6vw,68px)/1 var(--display);letter-spacing:-.03em;font-variant-numeric:tabular-nums;color:#F2B42C}
+.big small{font-size:.38em;letter-spacing:0;color:var(--term-dim);font-weight:600}
+.outs{display:grid;grid-template-columns:repeat(3,1fr);gap:1px;background:rgba(255,255,255,.1);border-radius:12px;overflow:hidden}
+.outs div{background:var(--term);padding:14px}
+.outs b{display:block;font:800 22px var(--display);font-variant-numeric:tabular-nums}
+.outs small{font-size:12.5px;color:var(--term-dim)}
+.cmpbars{display:grid;gap:12px}
+.cmpbars .row{font-size:14px;margin-bottom:6px;color:var(--term-ink)}
+.cmpbars .row b{font:600 14px var(--mono);color:var(--term-ink)}
+.cmpbars .track{background:rgba(255,255,255,.1)}
+.outcome .fine{font-size:12.5px;color:var(--term-dim)}
+@media (max-width:1000px){.calc{grid-template-columns:1fr}.outs{grid-template-columns:1fr}}
 </style>
 <script src="/site.js"></script>
 </head>
@@ -212,6 +258,7 @@ section.s{scroll-margin-top:62px}
     <div class="links" id="links">
       <a href="#how">How it works</a>
       <a href="#benchmarks">Benchmarks</a>
+      <a href="#savings">Savings</a>
       <a href="#use">Use it</a>
       <a href="#deploy">Deploy</a>
       <a href="/docs">Docs</a>
@@ -265,6 +312,20 @@ section.s{scroll-margin-top:62px}
     <div class="cell spark-cell"><div class="spark" id="spark" aria-hidden="true"></div><small id="spark-note">last requests, height = latency</small></div>
   </div>
 </div>
+
+<section class="flow" aria-label="Live traffic through this gateway">
+  <div class="wrap">
+    <div class="flowcard">
+      <canvas id="flow" aria-hidden="true"></canvas>
+      <div class="flowhead">
+        <div class="t">Every dot is a request<small>left: your users &middot; middle: Sieve &middot; right: the model</small></div>
+        <div class="lg"><span><i style="background:#2FA674"></i>answered from cache</span><span><i style="background:#DD6A3B"></i>sent to a model</span><span><i style="background:#9AA3A7"></i>personal, bypassed</span><span><i style="background:#B48CE6"></i>rate limited</span></div>
+      </div>
+      <div class="flowmode" id="flowmode"><i></i><span>Simulated traffic</span></div>
+      <div class="flowcount"><span>cache <b id="fc-hit">0</b></span><span>model <b id="fc-miss">0</b></span><span>saved <b id="fc-pct">0%</b></span></div>
+    </div>
+  </div>
+</section>
 
 <section class="s" id="problem">
   <div class="wrap">
@@ -359,6 +420,37 @@ section.s{scroll-margin-top:62px}
       <div class="card tile"><b>&lt; 2 s</b><p>for a new answer to reach every replica through Redis</p><code>internal/cache/redis.go</code></div>
     </div>
     <p class="note" style="margin-top:22px">Method: 2,000 replayed requests, made of support questions with typos, filler and Hinglish (66%), developer questions that look alike but differ in meaning (24%), and personal prompts (10%). The model is a mock with 0.8 to 1.4 s latency, so the run is free and repeatable. Reproduce with <code class="i">make sweep</code> and <code class="i">make bench</code>.</p>
+  </div>
+</section>
+
+<section class="s" id="savings">
+  <div class="wrap">
+    <div class="shead">
+      <span class="eyebrow">What it saves</span>
+      <h2>Put in your traffic. See your bill.</h2>
+      <p>Move the sliders to match your app. The repeat share starts at 70%, the rate measured in the benchmark; real traffic varies, so treat the result as an estimate.</p>
+    </div>
+    <div class="calc">
+      <div class="card inputs">
+        <div class="field"><label for="c-req">Requests per day <output id="o-req">100,000</output></label><input type="range" id="c-req" min="0" max="100" value="50"><small>From a small support bot to a large consumer app.</small></div>
+        <div class="field"><label for="c-hit">Share answered from cache <output id="o-hit">70%</output></label><input type="range" id="c-hit" min="5" max="90" value="70"><small>FAQ-style traffic repeats a lot; open-ended chat repeats less.</small></div>
+        <div class="field"><label for="c-cost">Cost of one model call</label><div class="money"><div class="seg" role="group" aria-label="Currency"><button type="button" data-cur="INR" aria-pressed="true">&#8377;</button><button type="button" data-cur="USD" aria-pressed="false">$</button></div><input id="c-cost" inputmode="decimal" value="0.80" aria-label="Cost per call"></div><small id="cost-help">An example. Check your provider's price and your average prompt size.</small></div>
+        <div class="field"><label for="c-lat">Model reply time <output id="o-lat">1.1 s</output></label><input type="range" id="c-lat" min="3" max="80" value="11"><small>A cache hit takes about 0.3 ms instead.</small></div>
+      </div>
+      <div class="outcome" aria-live="polite">
+        <div><span class="label">Model spend avoided, per month</span><div class="big" id="o-save">&#8377;16.8L</div></div>
+        <div class="outs">
+          <div><b id="o-calls">2.1M</b><small>model calls avoided a month</small></div>
+          <div><b id="o-year">&#8377;2.0Cr</b><small>avoided a year</small></div>
+          <div><b id="o-wait">642 h</b><small>of user waiting removed a month</small></div>
+        </div>
+        <div class="cmpbars">
+          <div><div class="row"><span>Monthly model bill without Sieve</span><b id="o-before">&#8377;24L</b></div><div class="track"><i style="width:100%;background:var(--miss)"></i></div></div>
+          <div><div class="row"><span>With Sieve</span><b id="o-after">&#8377;7.2L</b></div><div class="track"><i id="o-afterbar" style="width:30%;background:var(--hit)"></i></div></div>
+        </div>
+        <p class="fine">Estimate: requests &times; 30 days &times; cache share &times; cost per call. Server costs are not included; Sieve itself is free and runs on a small machine.</p>
+      </div>
+    </div>
   </div>
 </section>
 
@@ -617,6 +709,70 @@ $('sweepbox').addEventListener('pointermove',e=>{const r=svg.getBoundingClientRe
 $('sweepbox').addEventListener('pointerleave',()=>setSel(5,null));
 const bio=new IntersectionObserver(es=>{es.forEach(x=>{if(x.isIntersecting){x.target.querySelectorAll('.track i').forEach(i=>i.style.width=i.dataset.w+'%');bio.unobserve(x.target)}})},{threshold:.3});
 document.querySelectorAll('.side .card').forEach(c=>bio.observe(c));
+
+/* ---------- savings calculator ---------- */
+let cur='INR',costTouched=false;
+const reqFromSlider=v=>Math.round(Math.pow(10,3+v/100*4)/100)*100; // 1,000 .. 10,000,000
+function money(x){if(cur==='INR'){if(x>=1e7)return '₹'+(x/1e7).toFixed(x>=1e9?0:1)+'Cr';if(x>=1e5)return '₹'+(x/1e5).toFixed(1)+'L';if(x>=1e3)return '₹'+(x/1e3).toFixed(1)+'K';return '₹'+x.toFixed(0)}
+ if(x>=1e6)return '$'+(x/1e6).toFixed(x>=1e7?0:1)+'M';if(x>=1e3)return '$'+(x/1e3).toFixed(x>=1e4?0:1)+'K';return '$'+x.toFixed(x<10?2:0)}
+const num=x=>x>=1e9?(x/1e9).toFixed(1)+'B':x>=1e6?(x/1e6).toFixed(1)+'M':x>=1e3?(x/1e3).toFixed(x>=1e4?0:1)+'K':Math.round(x).toString();
+function calc(){const req=reqFromSlider(+$('c-req').value),hit=+$('c-hit').value/100,lat=+$('c-lat').value/10;
+ let cost=parseFloat(String($('c-cost').value).replace(/[^0-9.]/g,''));const bad=!(cost>=0);$('c-cost').style.borderColor=bad?'var(--miss)':'';if(bad)cost=0;
+ $('cost-help').textContent=bad?'Enter a number, for example 0.80':'An example. Check your provider’s price and your average prompt size.';
+ $('o-req').textContent=req.toLocaleString('en-IN');$('o-hit').textContent=Math.round(hit*100)+'%';$('o-lat').textContent=lat.toFixed(1)+' s';
+ const month=req*30,avoided=month*hit,before=month*cost,after=before-avoided*cost;
+ $('o-save').textContent=money(avoided*cost);$('o-year').textContent=money(avoided*cost*12);$('o-calls').textContent=num(avoided);
+ const hrs=avoided*(lat-0.0003)/3600;$('o-wait').textContent=hrs>=1e6?(hrs/1e6).toFixed(1)+'M h':hrs>=1e3?num(hrs)+' h':Math.round(hrs)+' h';
+ $('o-before').textContent=money(before);$('o-after').textContent=money(after);$('o-afterbar').style.width=(before>0?Math.max(1,after/before*100):0)+'%'}
+['c-req','c-hit','c-lat'].forEach(id=>$(id).addEventListener('input',calc));
+$('c-cost').addEventListener('input',()=>{costTouched=true;calc()});
+document.querySelectorAll('.seg button').forEach(b=>b.addEventListener('click',()=>{cur=b.dataset.cur;document.querySelectorAll('.seg button').forEach(x=>x.setAttribute('aria-pressed',x===b));
+ if(!costTouched)$('c-cost').value=cur==='INR'?'0.80':'0.01';calc()}));
+calc();
+
+/* ---------- live flow canvas ---------- */
+(function(){
+ const cv=$('flow'),cx=cv.getContext('2d');let W=0,H=0,dpr=1;
+ function size(){dpr=Math.min(2,devicePixelRatio||1);W=cv.clientWidth;H=cv.clientHeight;cv.width=W*dpr;cv.height=H*dpr;cx.setTransform(dpr,0,0,dpr,0,0)}
+ size();addEventListener('resize',size);
+ const COL={hit:'#2FA674',coalesced:'#2FA674',miss:'#DD6A3B',bypass:'#9AA3A7',rate_limited:'#B48CE6',error:'#B48CE6',cancelled:'#B48CE6'};
+ let parts=[],lastAt=0,lastReal=0,cnt={hit:0,miss:0};
+ const gateX=()=>W*0.5, modelX=()=>W-70, top=78, bot=()=>H-64;
+ function spawn(kind){const y=top+Math.random()*(bot()-top);parts.push({x:-8,y,vx:2.2+Math.random()*1.4,vy:0,kind,ph:0,r:kind==='miss'||kind==='bypass'?4:3.4,t:0});
+  if(kind==='hit'||kind==='coalesced')cnt.hit++;else if(kind==='miss'||kind==='bypass')cnt.miss++;
+  $('fc-hit').textContent=cnt.hit.toLocaleString('en-IN');$('fc-miss').textContent=cnt.miss.toLocaleString('en-IN');const t=cnt.hit+cnt.miss;$('fc-pct').textContent=t?Math.round(cnt.hit/t*100)+'%':'0%'}
+ // Real events from this server, staggered so a burst stays readable.
+ const queue=[];
+ async function poll(){try{const j=await (await fetch('/v1/public/stats',{cache:'no-store'})).json();const ev=(j.recent||[]).filter(e=>e.at>lastAt).sort((a,b)=>a.at-b.at);
+  if(lastAt===0){lastAt=ev.length?ev[ev.length-1].at:Date.now();return}
+  if(ev.length){lastAt=ev[ev.length-1].at;lastReal=Date.now();if(queue.length<200)queue.push(...ev.map(e=>e.result))}}catch(e){}}
+ poll();setInterval(poll,2000);
+ let simAcc=0,lastT=performance.now(),mode='';
+ function setMode(live){const m=live?'live':'sim';if(m===mode)return;mode=m;if(live){cnt={hit:0,miss:0}}$('flowmode').className='flowmode'+(live?' live':'');$('flowmode').lastChild.textContent=live?'Live traffic from this server':'Simulated traffic · send a request to see real ones'}
+ function simKind(){const r=Math.random();return r<.06?'rate_limited':r<.14?'bypass':r<.84?'hit':'miss'}
+ function frame(t){const dt=Math.min(64,t-lastT);lastT=t;const live=Date.now()-lastReal<20000;setMode(live);
+  if(queue.length){spawn(queue.shift())}
+  else if(!live&&!reduce){simAcc+=dt;while(simAcc>170){simAcc-=170;spawn(simKind())}}
+  draw();if(!reduce)requestAnimationFrame(frame)}
+ function draw(){const gx=gateX(),mx=modelX(),b=bot();cx.clearRect(0,0,W,H);
+  // gate: a vertical sieve of short bars
+  cx.fillStyle='rgba(224,161,0,.9)';for(let y=top-8;y<b+8;y+=11){cx.fillRect(gx-1.5,y,3,6)}
+  cx.font='11px "IBM Plex Mono", monospace';cx.textAlign='center';cx.fillStyle='#7F8A8F';cx.fillText('SIEVE',gx,b+22);
+  // model box
+  cx.strokeStyle='rgba(217,222,217,.18)';cx.lineWidth=1;cx.beginPath();cx.roundRect?cx.roundRect(mx-26,top-6,52,b-top+12,10):cx.rect(mx-26,top-6,52,b-top+12);cx.stroke();cx.fillText('MODEL',mx,b+22);
+  for(const p of parts){p.t++;
+   if(p.ph===0){p.x+=p.vx;if(p.x>=gx-8){if(p.kind==='hit'||p.kind==='coalesced'){p.ph=1;p.vx=-(2.4+Math.random()*1.2);p.vy=(Math.random()-.5)*1.4}else if(p.kind==='rate_limited'||p.kind==='error'||p.kind==='cancelled'){p.ph=2;p.vx=.4;p.vy=1.2}else{p.ph=3}}}
+   else if(p.ph===1){p.x+=p.vx;p.y+=p.vy}
+   else if(p.ph===2){p.x+=p.vx;p.y+=p.vy;p.vy+=.12}
+   else{p.x+=p.vx*.85;if(p.x>mx-26){p.ph=4;p.life=30}}
+   if(p.ph===4){p.life--}
+   const a=p.ph===1?Math.max(0,Math.min(1,p.x/(gx*.6))):p.ph===4?Math.max(0,p.life/30):1;
+   cx.globalAlpha=a;cx.fillStyle=COL[p.kind]||'#9AA3A7';cx.beginPath();cx.arc(p.x,p.y,p.r,0,7);cx.fill();
+   if(p.ph===1&&p.t%2===0){cx.globalAlpha=a*.25;cx.beginPath();cx.arc(p.x+6,p.y-p.vy*2,p.r*.8,0,7);cx.fill()}}
+  cx.globalAlpha=1;parts=parts.filter(p=>p.x>-12&&p.y<H+12&&!(p.ph===4&&p.life<=0));if(parts.length>400)parts=parts.slice(-400)}
+ if(reduce){for(let i=0;i<40;i++){spawn(simKind());const p=parts[parts.length-1];p.x=Math.random()*gateX()*0.9}draw();setMode(false)}
+ else requestAnimationFrame(frame);
+})();
 
 /* ---------- code tabs ---------- */
 const CODE={
