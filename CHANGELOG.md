@@ -18,3 +18,4 @@ First public release.
 - `GET /v1/public/stats` for live aggregate numbers, with no prompt text
 - Fonts ship inside the binary, so the site works offline
 - UPI IDs (name@bank) are treated as personal data and never cached
+- Narrated demo video on the home page, with chapters

@@ -306,3 +306,17 @@ func TestPublicStatsAndPages(t *testing.T) {
 		}
 	}
 }
+
+func TestDemoVideoServedWithRanges(t *testing.T) {
+	ts, _ := newTestServer(t, nil)
+	req, _ := http.NewRequest("GET", ts.URL+"/media/recura-demo.mp4", nil)
+	req.Header.Set("Range", "bytes=0-15")
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		t.Fatal(err)
+	}
+	resp.Body.Close()
+	if resp.StatusCode != http.StatusPartialContent || resp.Header.Get("Content-Type") != "video/mp4" {
+		t.Fatalf("video must support range requests for seeking: status %d, type %q", resp.StatusCode, resp.Header.Get("Content-Type"))
+	}
+}

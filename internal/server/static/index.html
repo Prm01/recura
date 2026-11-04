@@ -248,6 +248,20 @@ section.s{scroll-margin-top:62px}
 .cmpbars .track{background:rgba(255,255,255,.1)}
 .outcome .fine{font-size:12.5px;color:var(--term-dim)}
 @media (max-width:1000px){.calc{grid-template-columns:1fr}.outs{grid-template-columns:1fr}}
+
+/* demo video */
+.watch{padding-block:clamp(48px,7vw,80px) 0;scroll-margin-top:70px}
+.watch .wrap{display:grid;grid-template-columns:minmax(0,1fr) 300px;gap:clamp(20px,3vw,40px);align-items:center}
+.vframe{position:relative;border-radius:18px;overflow:hidden;background:#0B1013;border:1px solid color-mix(in srgb,var(--term) 60%,var(--line));box-shadow:0 30px 70px -35px rgba(0,0,0,.55);aspect-ratio:16/9;max-width:100%}
+.vframe video{display:block;width:100%;height:100%;object-fit:cover;background:#0B1013}
+.vnotes{display:grid;gap:14px}
+.vnotes h2{font-size:clamp(26px,3vw,34px);font-weight:800}
+.vnotes p{color:var(--muted);font-size:15.5px}
+.chapters{display:grid;gap:2px;margin-top:4px}
+.chapters button{display:grid;grid-template-columns:52px 1fr;gap:10px;text-align:left;border:0;background:transparent;padding:8px 10px;border-radius:8px;font-size:14.5px;color:var(--ink-2)}
+.chapters button:hover{background:var(--sunk);color:var(--ink)}
+.chapters button span{font:500 12.5px var(--mono);color:var(--muted);padding-top:2px}
+@media (max-width:900px){.watch .wrap{grid-template-columns:1fr}}
 </style>
 <script src="/site.js"></script>
 </head>
@@ -280,7 +294,7 @@ section.s{scroll-margin-top:62px}
       <p class="lede">Recura sits between your app and your AI models. It answers questions it has already answered in under a millisecond, falls back when a provider goes down, and keeps one user from running up your bill.</p>
       <div class="cta">
         <a class="btn amber" href="/console">Open the live console <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg></a>
-        <a class="btn ghost" href="/docs">Read the docs</a>
+        <a class="btn ghost" href="#demo-video"><svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M8 5.5v13a1 1 0 0 0 1.5.86l11-6.5a1 1 0 0 0 0-1.72l-11-6.5A1 1 0 0 0 8 5.5z"/></svg>Watch the demo <span style="font:500 12.5px var(--mono);color:var(--muted)">1:45</span></a>
       </div>
       <div class="inline-cmd" aria-label="Run with Docker">
         <span class="prompt">$</span><code id="cmd-docker">docker run -p 8080:8080 ghcr.io/prm01/recura:latest</code>
@@ -312,6 +326,23 @@ section.s{scroll-margin-top:62px}
     <div class="cell spark-cell"><div class="spark" id="spark" aria-hidden="true"></div><small id="spark-note">last requests, height = latency</small></div>
   </div>
 </div>
+
+<section class="watch" id="demo-video" aria-label="Demo video">
+  <div class="wrap">
+    <div class="vframe">
+      <video id="demo" controls preload="metadata" playsinline poster="/media/recura-demo-poster.jpg">
+        <source src="/media/recura-demo.mp4" type="video/mp4">
+        Your browser can't play this video. <a href="/media/recura-demo.mp4">Download it</a> instead.
+      </video>
+    </div>
+    <div class="vnotes">
+      <span class="eyebrow">Demo &middot; 1 min 45 s</span>
+      <h2>See it work in under two minutes.</h2>
+      <p>Real requests through this gateway: a cache hit in Hinglish, a personal prompt that is never cached, a provider going down, and the benchmark behind the default. Narrated, with captions.</p>
+      <div class="chapters" id="chapters"></div>
+    </div>
+  </div>
+</section>
 
 <section class="flow" aria-label="Live traffic through this gateway">
   <div class="wrap">
@@ -772,6 +803,12 @@ calc();
   cx.globalAlpha=1;parts=parts.filter(p=>p.x>-12&&p.y<H+12&&!(p.ph===4&&p.life<=0));if(parts.length>400)parts=parts.slice(-400)}
  if(reduce){for(let i=0;i<40;i++){spawn(simKind());const p=parts[parts.length-1];p.x=Math.random()*gateX()*0.9}draw();setMode(false)}
  else requestAnimationFrame(frame);
+})();
+
+/* ---------- demo video chapters ---------- */
+(function(){const v=$('demo');const CH=[[0,'The problem'],[6,'What Recura does'],[19,'Two real requests'],[31,'Live traffic'],[39,'Console, Hinglish and privacy'],[54,'Fallback and rate limits'],[64,'Benchmarks'],[80,'Savings'],[86,'Under the hood']];
+ $('chapters').innerHTML=CH.map(([t,n])=>`<button type="button" data-t="${t}"><span>${Math.floor(t/60)}:${String(t%60).padStart(2,'0')}</span>${n}</button>`).join('');
+ $('chapters').addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;v.currentTime=+b.dataset.t;v.play().catch(()=>{})});
 })();
 
 /* ---------- code tabs ---------- */

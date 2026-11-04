@@ -11,9 +11,11 @@ Semantic caching, multi-provider fallback, rate limiting and Prometheus metrics 
 ![Dependencies](https://img.shields.io/badge/dependencies-0-brightgreen)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue)](LICENSE)
 
-[Download](https://github.com/Prm01/recura/releases/latest) · [Quickstart](#quickstart) · [Benchmarks](#benchmarks) · [How it works](#how-it-works) · [Design decisions](docs/ARCHITECTURE.md)
+[Watch the 2-minute demo](internal/server/static/media/recura-demo.mp4) · [Download](https://github.com/Prm01/recura/releases/latest) · [Quickstart](#quickstart) · [Benchmarks](#benchmarks) · [How it works](#how-it-works) · [Design decisions](docs/ARCHITECTURE.md)
 
 </div>
+
+[![Recura demo video: click to watch a narrated 1 minute 45 second tour](internal/server/static/media/recura-demo-poster.jpg)](internal/server/static/media/recura-demo.mp4)
 
 ![Recura home page: live demo terminal, benchmarks and docs, served by the gateway itself](docs/screenshot-home.jpg)
 
