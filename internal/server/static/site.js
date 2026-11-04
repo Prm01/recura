@@ -1,29 +1,29 @@
 // Shared behaviour for every page: theme toggle, mobile menu, copy buttons.
 (function () {
   const root = document.documentElement;
-  const KEY = "sieve-theme";
+  const KEY = "recura-theme";
   try { const t = localStorage.getItem(KEY); if (t) root.dataset.theme = t; } catch (e) {}
 
-  window.sieve = window.sieve || {};
+  window.recura = window.recura || {};
   const toastEl = () => {
     let t = document.querySelector(".toast");
     if (!t) { t = document.createElement("div"); t.className = "toast"; t.setAttribute("role", "status"); document.body.append(t); }
     return t;
   };
   let toastTimer;
-  sieve.toast = (msg) => {
+  recura.toast = (msg) => {
     const t = toastEl(); t.textContent = msg; t.classList.add("on");
     clearTimeout(toastTimer); toastTimer = setTimeout(() => t.classList.remove("on"), 1800);
   };
-  sieve.copy = async (text, label) => {
-    try { await navigator.clipboard.writeText(text); sieve.toast(label || "Copied"); }
+  recura.copy = async (text, label) => {
+    try { await navigator.clipboard.writeText(text); recura.toast(label || "Copied"); }
     catch (e) {
       const ta = document.createElement("textarea"); ta.value = text; document.body.append(ta); ta.select();
-      try { document.execCommand("copy"); sieve.toast(label || "Copied"); } catch (_) { sieve.toast("Select the text to copy it"); }
+      try { document.execCommand("copy"); recura.toast(label || "Copied"); } catch (_) { recura.toast("Select the text to copy it"); }
       ta.remove();
     }
   };
-  sieve.fmtMs = (ms) => ms == null ? "–" : ms < 1 ? ms.toFixed(2) + " ms" : ms < 1000 ? (ms < 10 ? ms.toFixed(1) : Math.round(ms)) + " ms" : (ms / 1000).toFixed(2) + " s";
+  recura.fmtMs = (ms) => ms == null ? "–" : ms < 1 ? ms.toFixed(2) + " ms" : ms < 1000 ? (ms < 10 ? ms.toFixed(1) : Math.round(ms)) + " ms" : (ms / 1000).toFixed(2) + " s";
 
   document.addEventListener("DOMContentLoaded", () => {
     const tb = document.getElementById("theme");
@@ -42,7 +42,7 @@
     }
     document.querySelectorAll("[data-copy]").forEach((b) => b.addEventListener("click", () => {
       const src = b.dataset.copy.startsWith("#") ? document.querySelector(b.dataset.copy).innerText : b.dataset.copy;
-      sieve.copy(src.trim(), b.dataset.copyLabel);
+      recura.copy(src.trim(), b.dataset.copyLabel);
     }));
     fetch("/healthz").then((r) => r.json()).then((j) => {
       document.querySelectorAll("[data-version]").forEach((el) => el.textContent = j.version || "dev");

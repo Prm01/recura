@@ -6,14 +6,14 @@ import (
 	"testing"
 	"time"
 
-	"github.com/Prm01/sieve/internal/resp"
+	"github.com/Prm01/recura/internal/resp"
 )
 
-// Integration test: run with SIEVE_TEST_REDIS=redis://localhost:6379/15
+// Integration test: run with RECURA_TEST_REDIS=redis://localhost:6379/15
 func TestRedisSharedAcrossReplicas(t *testing.T) {
-	url := os.Getenv("SIEVE_TEST_REDIS")
+	url := os.Getenv("RECURA_TEST_REDIS")
 	if url == "" {
-		t.Skip("SIEVE_TEST_REDIS not set")
+		t.Skip("RECURA_TEST_REDIS not set")
 	}
 	ctx := context.Background()
 	rc, err := resp.Dial(ctx, url, 4)
@@ -21,7 +21,7 @@ func TestRedisSharedAcrossReplicas(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer rc.Close()
-	prefix := "sievetest:" + time.Now().Format("150405.000") + ":"
+	prefix := "recuratest:" + time.Now().Format("150405.000") + ":"
 	a := New(Config{Threshold: 0.9}, &Redis{C: rc, Prefix: prefix}, nil)
 	b := New(Config{Threshold: 0.9}, &Redis{C: rc, Prefix: prefix}, nil)
 	sctx, cancel := context.WithCancel(ctx)

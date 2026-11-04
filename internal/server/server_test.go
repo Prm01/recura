@@ -10,12 +10,12 @@ import (
 	"testing"
 	"time"
 
-	"github.com/Prm01/sieve/internal/cache"
-	"github.com/Prm01/sieve/internal/embed"
-	"github.com/Prm01/sieve/internal/privacy"
-	"github.com/Prm01/sieve/internal/provider"
-	"github.com/Prm01/sieve/internal/ratelimit"
-	"github.com/Prm01/sieve/internal/router"
+	"github.com/Prm01/recura/internal/cache"
+	"github.com/Prm01/recura/internal/embed"
+	"github.com/Prm01/recura/internal/privacy"
+	"github.com/Prm01/recura/internal/provider"
+	"github.com/Prm01/recura/internal/ratelimit"
+	"github.com/Prm01/recura/internal/router"
 )
 
 func newTestServer(t *testing.T, opts func(*Options)) (*httptest.Server, *Options) {
@@ -63,17 +63,17 @@ func content(out map[string]any) string {
 func TestMissThenSemanticHit(t *testing.T) {
 	ts, _ := newTestServer(t, nil)
 	r1, o1 := chat(t, ts.URL, `{"messages":[{"role":"user","content":"How do I reset my password?"}]}`, nil)
-	if r1.Header.Get("X-Sieve-Cache") != "MISS" || r1.Header.Get("X-Sieve-Provider") != "mock" {
+	if r1.Header.Get("X-Recura-Cache") != "MISS" || r1.Header.Get("X-Recura-Provider") != "mock" {
 		t.Fatalf("first request should miss: %v", r1.Header)
 	}
 	r2, o2 := chat(t, ts.URL, `{"messages":[{"role":"user","content":"pls how to reset my password"}]}`, nil)
-	if r2.Header.Get("X-Sieve-Cache") != "HIT" {
-		t.Fatalf("paraphrase should hit, similarity %s", r2.Header.Get("X-Sieve-Similarity"))
+	if r2.Header.Get("X-Recura-Cache") != "HIT" {
+		t.Fatalf("paraphrase should hit, similarity %s", r2.Header.Get("X-Recura-Similarity"))
 	}
 	if content(o1) != content(o2) {
 		t.Fatal("hit must return the cached answer")
 	}
-	if o2["sieve"].(map[string]any)["entry_id"] != r1.Header.Get("X-Sieve-Entry") {
+	if o2["recura"].(map[string]any)["entry_id"] != r1.Header.Get("X-Recura-Entry") {
 		t.Fatal("hit should name the entry it matched")
 	}
 }
@@ -82,7 +82,7 @@ func TestSystemPromptPartitions(t *testing.T) {
 	ts, _ := newTestServer(t, nil)
 	chat(t, ts.URL, `{"messages":[{"role":"system","content":"Answer in French"},{"role":"user","content":"what is redis"}]}`, nil)
 	r, _ := chat(t, ts.URL, `{"messages":[{"role":"user","content":"what is redis"}]}`, nil)
-	if r.Header.Get("X-Sieve-Cache") != "MISS" {
+	if r.Header.Get("X-Recura-Cache") != "MISS" {
 		t.Fatal("a different system prompt must not share cache entries")
 	}
 }
@@ -94,12 +94,12 @@ func TestBypassCases(t *testing.T) {
 		"multi-turn": `{"messages":[{"role":"user","content":"hi"},{"role":"assistant","content":"hello"},{"role":"user","content":"and redis?"}]}`,
 	}
 	for name, body := range cases {
-		if r, _ := chat(t, ts.URL, body, nil); r.Header.Get("X-Sieve-Cache") != "BYPASS" {
-			t.Errorf("%s should bypass, got %s", name, r.Header.Get("X-Sieve-Cache"))
+		if r, _ := chat(t, ts.URL, body, nil); r.Header.Get("X-Recura-Cache") != "BYPASS" {
+			t.Errorf("%s should bypass, got %s", name, r.Header.Get("X-Recura-Cache"))
 		}
 	}
-	if r, _ := chat(t, ts.URL, `{"messages":[{"role":"user","content":"explain dns"}]}`, map[string]string{"X-Sieve-Cache": "off"}); r.Header.Get("X-Sieve-Cache") != "BYPASS" {
-		t.Error("X-Sieve-Cache: off should bypass")
+	if r, _ := chat(t, ts.URL, `{"messages":[{"role":"user","content":"explain dns"}]}`, map[string]string{"X-Recura-Cache": "off"}); r.Header.Get("X-Recura-Cache") != "BYPASS" {
+		t.Error("X-Recura-Cache: off should bypass")
 	}
 }
 
@@ -110,7 +110,7 @@ func TestStreaming(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		if resp.Header.Get("Content-Type") != "text/event-stream" || resp.Header.Get("X-Sieve-Cache") != want {
+		if resp.Header.Get("Content-Type") != "text/event-stream" || resp.Header.Get("X-Recura-Cache") != want {
 			t.Fatalf("want SSE %s, got %v", want, resp.Header)
 		}
 		var text strings.Builder
@@ -161,12 +161,12 @@ func TestAuthAndRateLimit(t *testing.T) {
 func TestFeedbackFlags(t *testing.T) {
 	ts, o := newTestServer(t, nil)
 	r1, _ := chat(t, ts.URL, `{"messages":[{"role":"user","content":"what is your refund policy"}]}`, nil)
-	id := r1.Header.Get("X-Sieve-Entry")
+	id := r1.Header.Get("X-Recura-Entry")
 	resp, _ := http.Post(ts.URL+"/v1/feedback", "application/json", strings.NewReader(`{"entry_id":"`+id+`","helpful":false}`))
 	if resp.StatusCode != 200 {
 		t.Fatalf("feedback: %d", resp.StatusCode)
 	}
-	if r, _ := chat(t, ts.URL, `{"messages":[{"role":"user","content":"what is your refund policy"}]}`, nil); r.Header.Get("X-Sieve-Cache") != "MISS" {
+	if r, _ := chat(t, ts.URL, `{"messages":[{"role":"user","content":"what is your refund policy"}]}`, nil); r.Header.Get("X-Recura-Cache") != "MISS" {
 		t.Fatal("flagged entry must not be served")
 	}
 	if o.Cache.Stats().Flagged != 1 {
@@ -211,7 +211,7 @@ func TestMetricsEndpoint(t *testing.T) {
 	for sc.Scan() {
 		b.WriteString(sc.Text() + "\n")
 	}
-	for _, want := range []string{`sieve_requests_total{result="miss"} 1`, `sieve_provider_requests_total{provider="mock",status="ok"} 1`, "sieve_cache_entries 1"} {
+	for _, want := range []string{`recura_requests_total{result="miss"} 1`, `recura_provider_requests_total{provider="mock",status="ok"} 1`, "recura_cache_entries 1"} {
 		if !strings.Contains(b.String(), want) {
 			t.Errorf("metrics missing %q", want)
 		}
@@ -231,7 +231,7 @@ func TestCoalescing(t *testing.T) {
 			defer wg.Done()
 			prompts := []string{"how do i cancel my subscription", "pls how do i cancel my subscription"}
 			r, out := chat(t, ts.URL, `{"messages":[{"role":"user","content":"`+prompts[i%2]+`"}]}`, nil)
-			results[i] = r.Header.Get("X-Sieve-Cache") + "/" + r.Header.Get("X-Sieve-Coalesced")
+			results[i] = r.Header.Get("X-Recura-Cache") + "/" + r.Header.Get("X-Recura-Coalesced")
 			if out["choices"] == nil {
 				t.Errorf("request %d got no answer", i)
 			}
@@ -289,7 +289,7 @@ func TestPublicStatsAndPages(t *testing.T) {
 			t.Fatal("public stats must never include prompt text")
 		}
 	}
-	for path, want := range map[string]string{"/": "Stop paying twice", "/console": "Sieve Console", "/docs": "Sieve documentation", "/site.css": "--accent", "/fonts.css": "@font-face"} {
+	for path, want := range map[string]string{"/": "Stop paying twice", "/console": "Recura Console", "/docs": "Recura documentation", "/site.css": "--accent", "/fonts.css": "@font-face"} {
 		r, err := http.Get(ts.URL + path)
 		if err != nil {
 			t.Fatal(err)

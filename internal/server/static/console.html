@@ -3,8 +3,8 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>Sieve Console</title>
-<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%23E0A100'/%3E%3Cg fill='%2312181C'%3E%3Crect x='7' y='7' width='3' height='18'/%3E%3Crect x='14.5' y='7' width='3' height='18'/%3E%3Crect x='22' y='7' width='3' height='18'/%3E%3C/g%3E%3C/svg%3E">
+<title>Recura Console</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%23E0A100'/%3E%3Cpath d='M23.61 18.47A8 8 0 1 1 20.24 9.22' fill='none' stroke='%2312181C' stroke-width='3' stroke-linecap='round'/%3E%3Cpath d='M23.29 11.12L18.15 11.80L21.65 6.21Z' fill='%2312181C' stroke='%2312181C' stroke-width='1' stroke-linejoin='round'/%3E%3Ccircle cx='16' cy='16' r='2.7' fill='%2312181C'/%3E%3C/svg%3E">
 <link rel="stylesheet" href="/fonts.css">
 <script src="/site.js"></script>
 <style>
@@ -35,7 +35,7 @@ button{font:inherit;cursor:pointer;color:inherit}
 /* top bar */
 .top{display:flex;align-items:center;justify-content:space-between;gap:14px;flex-wrap:wrap;padding-block:16px;border-bottom:1px solid var(--line);margin-bottom:18px}
 .brand{display:flex;align-items:center;gap:10px;font:800 22px var(--display);letter-spacing:-.02em}
-.brand i{width:24px;height:24px;border-radius:6px;background:repeating-linear-gradient(90deg,var(--ink) 0 2px,transparent 2px 5px),var(--accent)}
+.brand i{width:26px;height:26px;border-radius:7px;background:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%23E0A100'/%3E%3Cpath d='M23.61 18.47A8 8 0 1 1 20.24 9.22' fill='none' stroke='%2312181C' stroke-width='3' stroke-linecap='round'/%3E%3Cpath d='M23.29 11.12L18.15 11.80L21.65 6.21Z' fill='%2312181C' stroke='%2312181C' stroke-width='1' stroke-linejoin='round'/%3E%3Ccircle cx='16' cy='16' r='2.7' fill='%2312181C'/%3E%3C/svg%3E") center/contain no-repeat}
 .brand small{font:500 12px var(--mono);color:var(--muted);letter-spacing:.08em;text-transform:uppercase;margin-left:4px}
 .status{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
 .pill{display:inline-flex;align-items:center;gap:7px;font:500 12px var(--mono);padding:6px 11px;border-radius:999px;border:1px solid var(--line);background:var(--panel);color:var(--muted)}
@@ -143,11 +143,11 @@ canvas{display:block;width:100%}
 <body>
 <div class="wrap">
   <header class="top">
-    <a class="brand" href="/"><i aria-hidden="true"></i>Sieve<small>console</small></a>
+    <a class="brand" href="/"><i aria-hidden="true"></i>Recura<small>console</small></a>
     <div class="status">
       <span class="pill" id="health"><i></i><span>Connecting</span></span>
       <span class="pill" id="embedder"><i></i><span>embedder</span></span>
-      <nav class="toplinks"><a href="/">Home</a><a href="/console" aria-current="page">Console</a><a href="/docs">Docs</a><a href="/metrics" target="_blank">Metrics</a><a href="https://github.com/Prm01/sieve" target="_blank" rel="noopener">GitHub</a><button class="iconbtn" id="theme" type="button" aria-label="Switch theme"></button></nav>
+      <nav class="toplinks"><a href="/">Home</a><a href="/console" aria-current="page">Console</a><a href="/docs">Docs</a><a href="/metrics" target="_blank">Metrics</a><a href="https://github.com/Prm01/recura" target="_blank" rel="noopener">GitHub</a><button class="iconbtn" id="theme" type="button" aria-label="Switch theme"></button></nav>
     </div>
   </header>
 
@@ -225,7 +225,7 @@ const $=id=>document.getElementById(id);
 const css=n=>getComputedStyle(document.documentElement).getPropertyValue(n).trim();
 const fmt=ms=>ms==null?'-':ms<1?ms.toFixed(2)+' ms':ms<1000?(ms<10?ms.toFixed(1):Math.round(ms))+' ms':(ms/1000).toFixed(2)+' s';
 const med=a=>{if(!a.length)return null;const b=[...a].sort((x,y)=>x-y);return b[Math.floor(b.length/2)]};
-let key='';try{key=sessionStorage.getItem('sieve-key')||''}catch(e){}
+let key='';try{key=sessionStorage.getItem('recura-key')||''}catch(e){}
 const hdrs=()=>{const h={'Content-Type':'application/json'};if(key)h.Authorization='Bearer '+key;return h};
 let threshold=0.85,bucketMax=20;const log=[];
 
@@ -255,22 +255,22 @@ drawBucket(null);
 
 /* request */
 async function send(text,{quiet=false}={}){
- const msgs=[{role:'user',content:text}];const h=hdrs();if($('nocache').checked)h['X-Sieve-Cache']='off';
+ const msgs=[{role:'user',content:text}];const h=hdrs();if($('nocache').checked)h['X-Recura-Cache']='off';
  const stream=$('stream').checked&&!quiet;const t0=performance.now();
- const r=await fetch('/v1/chat/completions',{method:'POST',headers:h,body:JSON.stringify({model:'sieve',stream,messages:msgs})});
- const H=k=>r.headers.get(k);const info={status:r.status,cache:H('X-Sieve-Cache'),sim:H('X-Sieve-Similarity'),entry:H('X-Sieve-Entry'),prov:H('X-Sieve-Provider'),gw:H('X-Sieve-Latency-Ms'),rem:H('X-RateLimit-Remaining'),retry:H('Retry-After')};
+ const r=await fetch('/v1/chat/completions',{method:'POST',headers:h,body:JSON.stringify({model:'recura',stream,messages:msgs})});
+ const H=k=>r.headers.get(k);const info={status:r.status,cache:H('X-Recura-Cache'),sim:H('X-Recura-Similarity'),entry:H('X-Recura-Entry'),prov:H('X-Recura-Provider'),gw:H('X-Recura-Latency-Ms'),rem:H('X-RateLimit-Remaining'),retry:H('Retry-After')};
  return {r,info,t0,stream};
 }
 async function readAnswer(r,stream,onText){
  if(!r.ok){const j=await r.json().catch(()=>({}));throw new Error((j.error&&j.error.message)||r.statusText)}
- if(!stream){const j=await r.json();const t=j.choices[0].message.content;onText(t);return {text:t,meta:j.sieve}}
+ if(!stream){const j=await r.json();const t=j.choices[0].message.content;onText(t);return {text:t,meta:j.recura}}
  const rd=r.body.getReader(),dec=new TextDecoder();let buf='',text='',meta=null,first=null;
  for(;;){const{value,done}=await rd.read();if(done)break;buf+=dec.decode(value,{stream:true});let i;
   while((i=buf.indexOf('\n\n'))>=0){const ev=buf.slice(0,i);buf=buf.slice(i+2);const d=ev.replace(/^data: /,'');if(d==='[DONE]')continue;
    let j;try{j=JSON.parse(d)}catch(_){continue}
    if(j.error)throw new Error(j.error.message);const c=j.choices&&j.choices[0];
    if(c&&c.delta&&c.delta.content){if(first===null)first=performance.now();text+=c.delta.content;onText(text)}
-   if(j.sieve)meta=j.sieve}}
+   if(j.recura)meta=j.recura}}
  return {text,meta,first};
 }
 
@@ -330,7 +330,7 @@ function setMeter(sim,c,matched){const n=$('needle');if(sim==null){n.style.left=
 
 /* burst */
 $('burst').onclick=async()=>{const b=$('burst');b.disabled=true;b.textContent='Sending...';resetPipe();
- const res=await Promise.all(Array.from({length:25},(_,i)=>fetch('/v1/chat/completions',{method:'POST',headers:hdrs(),body:JSON.stringify({model:'sieve',messages:[{role:'user',content:'What is your refund policy?'}]})}).then(r=>{const rem=r.headers.get('X-RateLimit-Remaining');return{s:r.status,rem}}).catch(()=>({s:0}))));
+ const res=await Promise.all(Array.from({length:25},(_,i)=>fetch('/v1/chat/completions',{method:'POST',headers:hdrs(),body:JSON.stringify({model:'recura',messages:[{role:'user',content:'What is your refund policy?'}]})}).then(r=>{const rem=r.headers.get('X-RateLimit-Remaining');return{s:r.status,rem}}).catch(()=>({s:0}))));
  const ok=res.filter(r=>r.s===200).length,lim=res.filter(r=>r.s===429).length;
  const rems=res.map(r=>+r.rem).filter(v=>!isNaN(v));if(rems.length)drawBucket(Math.min(...rems));
  stage('rate',lim?'deny':'ok',`${ok} ok, ${lim} x 429`);$('err').textContent='';
@@ -348,7 +348,7 @@ async function loadSide(){
     d.querySelector('.n span').textContent=p.name;d.querySelector('button').onclick=async()=>{await fetch(`/v1/providers/${encodeURIComponent(p.name)}/${p.state==='disabled'?'enable':'disable'}`,{method:'POST',headers:hdrs()});loadSide()};$('provs').append(d)}}
   else if(r.status===401){$('provs').innerHTML='<p class="note">Enter the admin key to manage providers.</p>';$('adminbox').hidden=false}}catch(e){}}
 $('refresh').onclick=loadSide;
-$('savekey').onclick=()=>{key=$('key').value.trim();try{sessionStorage.setItem('sieve-key',key)}catch(e){}loadSide()};
+$('savekey').onclick=()=>{key=$('key').value.trim();try{sessionStorage.setItem('recura-key',key)}catch(e){}loadSide()};
 
 async function health(){try{const r=await fetch('/healthz');const j=await r.json();$('health').className='pill ok';$('health').lastChild.textContent='Online '+(j.version||'')}catch(e){$('health').className='pill bad';$('health').lastChild.textContent='Offline'}}
 health();loadSide();setInterval(health,10000);setInterval(loadSide,8000);

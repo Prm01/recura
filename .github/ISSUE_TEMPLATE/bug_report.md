@@ -9,9 +9,9 @@ labels: bug
 **What you expected**
 
 **How to reproduce**
-Request sent (remove secrets), and the response headers (`X-Sieve-*`):
+Request sent (remove secrets), and the response headers (`X-Recura-*`):
 
 **Environment**
-- Sieve version (`sieve -version`):
+- Recura version (`recura -version`):
 - Running with Redis? yes / no
 - Providers configured:

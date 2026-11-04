@@ -1,6 +1,6 @@
 # Architecture and design decisions
 
-This document explains why Sieve is built the way it is. Each decision lists the alternative that was considered and what the choice costs.
+This document explains why Recura is built the way it is. Each decision lists the alternative that was considered and what the choice costs.
 
 ## Request path
 
@@ -20,7 +20,7 @@ The cache check takes under a millisecond whether it hits or misses (see the ben
 
 **Cost.** Some genuine paraphrases score below 0.85 and still go to the model. A wrong cached answer is worse than an extra model call: it is fast, confident and wrong, and nobody notices.
 
-**Tuning.** The `sieve_cache_similarity` histogram shows how close misses were. If many misses sit just under the threshold and spot checks show they are true paraphrases, lower it a little.
+**Tuning.** The `recura_cache_similarity` histogram shows how close misses were. If many misses sit just under the threshold and spot checks show they are true paraphrases, lower it a little.
 
 ## 2. Only single-turn requests are cached
 
@@ -70,7 +70,7 @@ The cache check takes under a millisecond whether it hits or misses (see the ben
 
 **Why.** Token buckets allow the short bursts real users make while capping sustained abuse. A Lua script makes the update atomic, so gateways on several machines cannot spend the same token twice.
 
-**Cost.** One Redis round trip per request (about a millisecond on a local network). If Redis is unreachable, requests are allowed and `sieve_ratelimit_errors_total` counts it: an outage of the limiter should not become an outage of the product.
+**Cost.** One Redis round trip per request (about a millisecond on a local network). If Redis is unreachable, requests are allowed and `recura_ratelimit_errors_total` counts it: an outage of the limiter should not become an outage of the product.
 
 ## 8. In-memory index mirrored through Redis
 
@@ -104,7 +104,7 @@ The cache check takes under a millisecond whether it hits or misses (see the ben
 
 **Why.** One static binary, quick security review, no supply-chain surprises, and nothing to update when a library changes its API.
 
-**Cost.** The Redis client supports only what Sieve needs (no cluster mode, no TLS yet). Using `rediss://` or Redis Cluster would need a full client library.
+**Cost.** The Redis client supports only what Recura needs (no cluster mode, no TLS yet). Using `rediss://` or Redis Cluster would need a full client library.
 
 ## 12. Request coalescing
 

@@ -307,7 +307,7 @@ func (p *Gemini) Complete(ctx context.Context, req Request, onDelta DeltaFunc) (
 	return Result{Text: text, Model: p.Model, InputTokens: out.Usage.In, OutputTokens: out.Usage.Out}, nil
 }
 
-// Mock answers without calling any API. It lets Sieve run with zero
+// Mock answers without calling any API. It lets Recura run with zero
 // configuration and makes fallback and load testing reproducible.
 type Mock struct {
 	ID       string

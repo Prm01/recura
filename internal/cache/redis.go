@@ -9,12 +9,12 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/Prm01/sieve/internal/resp"
+	"github.com/Prm01/recura/internal/resp"
 )
 
 // Redis persists entries so that replicas share one cache.
 //
-// Layout (prefix defaults to "sieve:"):
+// Layout (prefix defaults to "recura:"):
 //
 //	{p}e:{id}       STRING  JSON entry (vector base64-encoded), expires with TTL
 //	{p}changes      ZSET    id -> last update time in ms (sync cursor)
@@ -34,7 +34,7 @@ type storedEntry struct {
 func (r *Redis) k(s string) string {
 	p := r.Prefix
 	if p == "" {
-		p = "sieve:"
+		p = "recura:"
 	}
 	return p + s
 }

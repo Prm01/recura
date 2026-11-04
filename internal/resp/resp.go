@@ -1,5 +1,5 @@
 // Package resp is a small Redis client speaking RESP2 over TCP. It covers
-// what Sieve needs (commands, pipelining-free request/response, a
+// what Recura needs (commands, pipelining-free request/response, a
 // connection pool, AUTH and SELECT) without an external dependency.
 package resp
 

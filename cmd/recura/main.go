@@ -1,4 +1,4 @@
-// Command sieve runs the Sieve LLM inference gateway.
+// Command recura runs the Recura LLM inference gateway.
 package main
 
 import (
@@ -14,15 +14,15 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/Prm01/sieve/internal/cache"
-	"github.com/Prm01/sieve/internal/config"
-	"github.com/Prm01/sieve/internal/embed"
-	"github.com/Prm01/sieve/internal/privacy"
-	"github.com/Prm01/sieve/internal/provider"
-	"github.com/Prm01/sieve/internal/ratelimit"
-	"github.com/Prm01/sieve/internal/resp"
-	"github.com/Prm01/sieve/internal/router"
-	"github.com/Prm01/sieve/internal/server"
+	"github.com/Prm01/recura/internal/cache"
+	"github.com/Prm01/recura/internal/config"
+	"github.com/Prm01/recura/internal/embed"
+	"github.com/Prm01/recura/internal/privacy"
+	"github.com/Prm01/recura/internal/provider"
+	"github.com/Prm01/recura/internal/ratelimit"
+	"github.com/Prm01/recura/internal/resp"
+	"github.com/Prm01/recura/internal/router"
+	"github.com/Prm01/recura/internal/server"
 )
 
 var version = "dev"
@@ -35,12 +35,12 @@ func main() {
 		return
 	}
 	var handler slog.Handler = slog.NewJSONHandler(os.Stdout, nil)
-	if strings.EqualFold(os.Getenv("SIEVE_LOG"), "text") {
+	if strings.EqualFold(os.Getenv("RECURA_LOG"), "text") {
 		handler = slog.NewTextHandler(os.Stdout, nil)
 	}
 	log := slog.New(handler)
 	if err := run(log); err != nil {
-		log.Error("sieve stopped", "err", err)
+		log.Error("recura stopped", "err", err)
 		os.Exit(1)
 	}
 }
@@ -121,7 +121,7 @@ func run(log *slog.Logger) error {
 	hs := &http.Server{Addr: cfg.Addr, Handler: srv, ReadHeaderTimeout: 10 * time.Second, IdleTimeout: 120 * time.Second}
 	errc := make(chan error, 1)
 	go func() { errc <- hs.ListenAndServe() }()
-	log.Info("sieve listening", "addr", cfg.Addr, "version", version, "providers", names, "embedder", emb.Name(),
+	log.Info("recura listening", "addr", cfg.Addr, "version", version, "providers", names, "embedder", emb.Name(),
 		"threshold", cfg.Threshold, "redis", rdb != nil, "auth", len(cfg.APIKeys) > 0)
 	if len(cfg.APIKeys) == 0 {
 		log.Warn("no API keys configured: the gateway is open to anyone who can reach it")

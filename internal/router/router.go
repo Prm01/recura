@@ -10,7 +10,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/Prm01/sieve/internal/provider"
+	"github.com/Prm01/recura/internal/provider"
 )
 
 // Breaker settings.

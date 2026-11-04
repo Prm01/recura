@@ -1,10 +1,10 @@
-// Command sievebench replays a realistic workload through a real Sieve
+// Command recurabench replays a realistic workload through a real Recura
 // server (in-process HTTP, mock model with configurable latency) and
 // reports hit rate, wrong-answer rate, latency and throughput.
 //
-//	go run ./cmd/sievebench                      # one run at the default threshold
-//	go run ./cmd/sievebench -sweep               # compare thresholds
-//	go run ./cmd/sievebench -n 5000 -c 64        # more load
+//	go run ./cmd/recurabench                      # one run at the default threshold
+//	go run ./cmd/recurabench -sweep               # compare thresholds
+//	go run ./cmd/recurabench -n 5000 -c 64        # more load
 package main
 
 import (
@@ -23,13 +23,13 @@ import (
 	"sync"
 	"time"
 
-	"github.com/Prm01/sieve/internal/cache"
-	"github.com/Prm01/sieve/internal/embed"
-	"github.com/Prm01/sieve/internal/privacy"
-	"github.com/Prm01/sieve/internal/provider"
-	"github.com/Prm01/sieve/internal/ratelimit"
-	"github.com/Prm01/sieve/internal/router"
-	"github.com/Prm01/sieve/internal/server"
+	"github.com/Prm01/recura/internal/cache"
+	"github.com/Prm01/recura/internal/embed"
+	"github.com/Prm01/recura/internal/privacy"
+	"github.com/Prm01/recura/internal/provider"
+	"github.com/Prm01/recura/internal/ratelimit"
+	"github.com/Prm01/recura/internal/router"
+	"github.com/Prm01/recura/internal/server"
 )
 
 var intents = map[string][]string{
@@ -166,16 +166,16 @@ func run(threshold float64, n, conc int, latency, jitter time.Duration, seed int
 					continue
 				}
 				var out struct {
-					Sieve struct {
+					Recura struct {
 						Matched string `json:"matched_prompt"`
-					} `json:"sieve"`
+					} `json:"recura"`
 				}
 				_ = json.NewDecoder(resp.Body).Decode(&out)
 				_, _ = io.Copy(io.Discard, resp.Body)
 				resp.Body.Close()
-				s := sample{cache: resp.Header.Get("X-Sieve-Cache"), ms: float64(time.Since(t0).Microseconds()) / 1000, status: resp.StatusCode}
+				s := sample{cache: resp.Header.Get("X-Recura-Cache"), ms: float64(time.Since(t0).Microseconds()) / 1000, status: resp.StatusCode}
 				if s.cache == "HIT" {
-					s.wrong = intentOf[out.Sieve.Matched] != q.intent
+					s.wrong = intentOf[out.Recura.Matched] != q.intent
 				}
 				samples[i] = s
 			}

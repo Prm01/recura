@@ -18,10 +18,10 @@ jobs:
       - name: Format and vet
         run: make lint
       - name: Test (race detector, real Redis)
-        env: {SIEVE_TEST_REDIS: "redis://localhost:6379/15"}
+        env: {RECURA_TEST_REDIS: "redis://localhost:6379/15"}
         run: go test -race -count=1 -coverprofile=coverage.out ./...
       - name: Benchmark smoke test
-        run: go run ./cmd/sievebench -n 300 -latency 50ms -jitter 50ms
+        run: go run ./cmd/recurabench -n 300 -latency 50ms -jitter 50ms
   docker:
     runs-on: ubuntu-latest
     needs: test

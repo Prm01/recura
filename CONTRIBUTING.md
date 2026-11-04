@@ -1,4 +1,4 @@
-# Contributing to Sieve
+# Contributing to Recura
 
 Thanks for helping. Small, focused pull requests are the easiest to review.
 
@@ -7,7 +7,7 @@ Thanks for helping. Small, focused pull requests are the easiest to review.
 You need Go 1.22 or newer. Redis is optional (only for the integration tests).
 
 ```bash
-git clone https://github.com/Prm01/sieve && cd sieve
+git clone https://github.com/Prm01/recura && cd recura
 make test          # unit and HTTP tests, a few seconds
 make test-redis    # adds Redis integration tests (needs redis on :6379)
 make race          # race detector
@@ -31,7 +31,7 @@ make sweep         # check that cache quality did not regress
 
 ## Reporting bugs
 
-Open an issue with the Sieve version (`sieve -version`), your config with secrets removed, the request you sent and the response headers you got back.
+Open an issue with the Recura version (`recura -version`), your config with secrets removed, the request you sent and the response headers you got back.
 
 ## Releasing
 

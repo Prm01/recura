@@ -1,27 +1,27 @@
-# One-click deploy: https://render.com/deploy?repo=https://github.com/Prm01/sieve
+# One-click deploy: https://render.com/deploy?repo=https://github.com/Prm01/recura
 # Creates the gateway (Docker) and a Redis-compatible Key Value store on Render's free plan.
 services:
   - type: web
-    name: sieve
+    name: recura
     runtime: docker
     plan: free
     healthCheckPath: /healthz
     envVars:
-      - key: SIEVE_CONFIG
+      - key: RECURA_CONFIG
         value: /examples/config.public.json
-      - key: SIEVE_REDIS_URL
+      - key: RECURA_REDIS_URL
         fromService:
           type: keyvalue
-          name: sieve-cache
+          name: recura-cache
           property: connectionString
-      - key: SIEVE_ADMIN_KEY
+      - key: RECURA_ADMIN_KEY
         generateValue: true
       # Optional. Leave empty to run the public demo on the mock models.
       - key: ANTHROPIC_API_KEY
         sync: false
 
   - type: keyvalue
-    name: sieve-cache
+    name: recura-cache
     plan: free
     maxmemoryPolicy: allkeys-lru
     ipAllowList: []

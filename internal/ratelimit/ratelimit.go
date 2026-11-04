@@ -9,7 +9,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/Prm01/sieve/internal/resp"
+	"github.com/Prm01/recura/internal/resp"
 )
 
 // Decision is the outcome of one Allow call.
@@ -123,7 +123,7 @@ return {allowed, tostring(tokens)}
 func (r *Redis) Allow(ctx context.Context, key string) (Decision, error) {
 	p := r.Prefix
 	if p == "" {
-		p = "sieve:rl:"
+		p = "recura:rl:"
 	}
 	v, err := r.C.Do(ctx, "EVAL", script, "1", p+key,
 		strconv.FormatFloat(r.Cfg.Capacity, 'f', -1, 64),

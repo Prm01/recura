@@ -3,12 +3,12 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>Sieve: LLM gateway with semantic caching</title>
+<title>Recura: LLM gateway with semantic caching</title>
 <meta name="description" content="Open-source LLM gateway in Go. Answers repeated questions from a semantic cache in under a millisecond, falls back across Claude, OpenAI and Gemini, and rate-limits every user.">
-<meta property="og:title" content="Sieve: stop paying twice for the same question">
+<meta property="og:title" content="Recura: stop paying twice for the same question">
 <meta property="og:description" content="Open-source LLM gateway: semantic caching, request coalescing, provider fallback and rate limiting in one Go binary.">
 <meta name="theme-color" content="#E0A100">
-<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%23E0A100'/%3E%3Cg fill='%2312181C'%3E%3Crect x='7' y='7' width='3' height='18'/%3E%3Crect x='14.5' y='7' width='3' height='18'/%3E%3Crect x='22' y='7' width='3' height='18'/%3E%3C/g%3E%3C/svg%3E">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%23E0A100'/%3E%3Cpath d='M23.61 18.47A8 8 0 1 1 20.24 9.22' fill='none' stroke='%2312181C' stroke-width='3' stroke-linecap='round'/%3E%3Cpath d='M23.29 11.12L18.15 11.80L21.65 6.21Z' fill='%2312181C' stroke='%2312181C' stroke-width='1' stroke-linejoin='round'/%3E%3Ccircle cx='16' cy='16' r='2.7' fill='%2312181C'/%3E%3C/svg%3E">
 <link rel="stylesheet" href="/fonts.css">
 <link rel="stylesheet" href="/site.css">
 <style>
@@ -254,7 +254,7 @@ section.s{scroll-margin-top:62px}
 <body>
 <nav class="nav" aria-label="Main">
   <div class="wrap">
-    <a class="brand" href="/"><span class="mark" aria-hidden="true"></span>Sieve</a>
+    <a class="brand" href="/"><span class="mark" aria-hidden="true"></span>Recura</a>
     <div class="links" id="links">
       <a href="#how">How it works</a>
       <a href="#benchmarks">Benchmarks</a>
@@ -265,7 +265,7 @@ section.s{scroll-margin-top:62px}
       <a href="/console">Console</a>
     </div>
     <div class="navr">
-      <a class="btn sm ghost hide-sm" href="https://github.com/Prm01/sieve" target="_blank" rel="noopener"><svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 .5a11.5 11.5 0 0 0-3.6 22.4c.6.1.8-.3.8-.6v-2c-3.2.7-3.9-1.5-3.9-1.5-.5-1.3-1.3-1.7-1.3-1.7-1-.7.1-.7.1-.7 1.2.1 1.8 1.2 1.8 1.2 1 1.8 2.8 1.3 3.5 1 .1-.8.4-1.3.7-1.6-2.6-.3-5.3-1.3-5.3-5.7 0-1.3.5-2.3 1.2-3.1-.1-.3-.5-1.5.1-3.1 0 0 1-.3 3.2 1.2a11 11 0 0 1 5.8 0c2.2-1.5 3.2-1.2 3.2-1.2.6 1.6.2 2.8.1 3.1.8.8 1.2 1.9 1.2 3.1 0 4.4-2.7 5.4-5.3 5.7.4.4.8 1.1.8 2.2v3.3c0 .3.2.7.8.6A11.5 11.5 0 0 0 12 .5z"/></svg>GitHub</a>
+      <a class="btn sm ghost hide-sm" href="https://github.com/Prm01/recura" target="_blank" rel="noopener"><svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 .5a11.5 11.5 0 0 0-3.6 22.4c.6.1.8-.3.8-.6v-2c-3.2.7-3.9-1.5-3.9-1.5-.5-1.3-1.3-1.7-1.3-1.7-1-.7.1-.7.1-.7 1.2.1 1.8 1.2 1.8 1.2 1 1.8 2.8 1.3 3.5 1 .1-.8.4-1.3.7-1.6-2.6-.3-5.3-1.3-5.3-5.7 0-1.3.5-2.3 1.2-3.1-.1-.3-.5-1.5.1-3.1 0 0 1-.3 3.2 1.2a11 11 0 0 1 5.8 0c2.2-1.5 3.2-1.2 3.2-1.2.6 1.6.2 2.8.1 3.1.8.8 1.2 1.9 1.2 3.1 0 4.4-2.7 5.4-5.3 5.7.4.4.8 1.1.8 2.2v3.3c0 .3.2.7.8.6A11.5 11.5 0 0 0 12 .5z"/></svg>GitHub</a>
       <button class="iconbtn" id="theme" type="button" aria-label="Switch theme"></button>
       <button class="iconbtn menu" id="menu" type="button" aria-label="Menu" aria-expanded="false" aria-controls="links"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M4 7h16M4 12h16M4 17h16"/></svg></button>
     </div>
@@ -277,13 +277,13 @@ section.s{scroll-margin-top:62px}
     <div class="reveal">
       <span class="eyebrow">Open-source LLM gateway &middot; Go &middot; MIT</span>
       <h1>Stop paying twice for the <span class="hl">same question.</span></h1>
-      <p class="lede">Sieve sits between your app and your AI models. It answers questions it has already answered in under a millisecond, falls back when a provider goes down, and keeps one user from running up your bill.</p>
+      <p class="lede">Recura sits between your app and your AI models. It answers questions it has already answered in under a millisecond, falls back when a provider goes down, and keeps one user from running up your bill.</p>
       <div class="cta">
         <a class="btn amber" href="/console">Open the live console <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg></a>
         <a class="btn ghost" href="/docs">Read the docs</a>
       </div>
       <div class="inline-cmd" aria-label="Run with Docker">
-        <span class="prompt">$</span><code id="cmd-docker">docker run -p 8080:8080 ghcr.io/prm01/sieve:latest</code>
+        <span class="prompt">$</span><code id="cmd-docker">docker run -p 8080:8080 ghcr.io/prm01/recura:latest</code>
         <button type="button" data-copy="#cmd-docker" data-copy-label="Command copied">Copy</button>
       </div>
       <div class="proof" aria-label="Benchmark results">
@@ -318,7 +318,7 @@ section.s{scroll-margin-top:62px}
     <div class="flowcard">
       <canvas id="flow" aria-hidden="true"></canvas>
       <div class="flowhead">
-        <div class="t">Every dot is a request<small>left: your users &middot; middle: Sieve &middot; right: the model</small></div>
+        <div class="t">Every dot is a request<small>left: your users &middot; middle: Recura &middot; right: the model</small></div>
         <div class="lg"><span><i style="background:#2FA674"></i>answered from cache</span><span><i style="background:#DD6A3B"></i>sent to a model</span><span><i style="background:#9AA3A7"></i>personal, bypassed</span><span><i style="background:#B48CE6"></i>rate limited</span></div>
       </div>
       <div class="flowmode" id="flowmode"><i></i><span>Simulated traffic</span></div>
@@ -344,7 +344,7 @@ section.s{scroll-margin-top:62px}
       <div class="q">"How do I reset my password?" <span>call 1 &middot; paid</span></div>
       <div class="q">"I forgot my password" <span>call 2 &middot; paid</span></div>
       <div class="q">"Password bhool gaya, kya karu" <span>call 3 &middot; paid</span></div>
-      <div class="qsum">One question. Three model calls. With Sieve: one call, then two answers in under a millisecond.</div>
+      <div class="qsum">One question. Three model calls. With Recura: one call, then two answers in under a millisecond.</div>
     </div>
   </div>
 </section>
@@ -415,7 +415,7 @@ section.s{scroll-margin-top:62px}
       </div>
     </div>
     <div class="tiles">
-      <div class="card tile"><b>5,058<span style="font-size:.5em"> req/s</span></b><p>through the gateway on 2 vCPUs, load generator included</p><code>sievebench -c 64</code></div>
+      <div class="card tile"><b>5,058<span style="font-size:.5em"> req/s</span></b><p>through the gateway on 2 vCPUs, load generator included</p><code>recurabench -c 64</code></div>
       <div class="card tile"><b>0.31 ms</b><p>to search 1,000 cached prompts; 4.2 ms for 10,000</p><code>go test -bench Lookup</code></div>
       <div class="card tile"><b>&lt; 2 s</b><p>for a new answer to reach every replica through Redis</p><code>internal/cache/redis.go</code></div>
     </div>
@@ -445,10 +445,10 @@ section.s{scroll-margin-top:62px}
           <div><b id="o-wait">642 h</b><small>of user waiting removed a month</small></div>
         </div>
         <div class="cmpbars">
-          <div><div class="row"><span>Monthly model bill without Sieve</span><b id="o-before">&#8377;24L</b></div><div class="track"><i style="width:100%;background:var(--miss)"></i></div></div>
-          <div><div class="row"><span>With Sieve</span><b id="o-after">&#8377;7.2L</b></div><div class="track"><i id="o-afterbar" style="width:30%;background:var(--hit)"></i></div></div>
+          <div><div class="row"><span>Monthly model bill without Recura</span><b id="o-before">&#8377;24L</b></div><div class="track"><i style="width:100%;background:var(--miss)"></i></div></div>
+          <div><div class="row"><span>With Recura</span><b id="o-after">&#8377;7.2L</b></div><div class="track"><i id="o-afterbar" style="width:30%;background:var(--hit)"></i></div></div>
         </div>
-        <p class="fine">Estimate: requests &times; 30 days &times; cache share &times; cost per call. Server costs are not included; Sieve itself is free and runs on a small machine.</p>
+        <p class="fine">Estimate: requests &times; 30 days &times; cache share &times; cost per call. Server costs are not included; Recura itself is free and runs on a small machine.</p>
       </div>
     </div>
   </div>
@@ -459,7 +459,7 @@ section.s{scroll-margin-top:62px}
     <div class="shead">
       <span class="eyebrow">Use it</span>
       <h2>Change one URL. Keep your code.</h2>
-      <p>Sieve speaks the OpenAI API, so the official SDKs, LangChain and anything else that takes a base URL work unchanged, streaming included.</p>
+      <p>Recura speaks the OpenAI API, so the official SDKs, LangChain and anything else that takes a base URL work unchanged, streaming included.</p>
     </div>
     <div class="integ">
       <div>
@@ -468,11 +468,11 @@ section.s{scroll-margin-top:62px}
       </div>
       <div class="hdrs">
         <span class="label">Every response tells you what happened</span>
-        <div class="hdr"><code>X-Sieve-Cache</code><span><b>HIT</b>, <b>MISS</b> or <b>BYPASS</b>: whether a model was called.</span></div>
-        <div class="hdr"><code>X-Sieve-Similarity</code><span>How close the nearest cached question was, from 0 to 1.</span></div>
-        <div class="hdr"><code>X-Sieve-Provider</code><span>Which model answered, including after a fallback.</span></div>
-        <div class="hdr"><code>X-Sieve-Coalesced</code><span>Set when the answer came from a request that arrived at the same moment.</span></div>
-        <div class="hdr"><code>X-Sieve-Cache: off</code><span>Send this header to skip the cache for one request.</span></div>
+        <div class="hdr"><code>X-Recura-Cache</code><span><b>HIT</b>, <b>MISS</b> or <b>BYPASS</b>: whether a model was called.</span></div>
+        <div class="hdr"><code>X-Recura-Similarity</code><span>How close the nearest cached question was, from 0 to 1.</span></div>
+        <div class="hdr"><code>X-Recura-Provider</code><span>Which model answered, including after a fallback.</span></div>
+        <div class="hdr"><code>X-Recura-Coalesced</code><span>Set when the answer came from a request that arrived at the same moment.</span></div>
+        <div class="hdr"><code>X-Recura-Cache: off</code><span>Send this header to skip the cache for one request.</span></div>
       </div>
     </div>
   </div>
@@ -482,11 +482,11 @@ section.s{scroll-margin-top:62px}
   <div class="wrap">
     <div class="shead">
       <span class="eyebrow">Why a gateway</span>
-      <h2>What changes when Sieve is in the middle.</h2>
+      <h2>What changes when Recura is in the middle.</h2>
     </div>
     <div class="tblwrap">
       <table class="t cmp">
-        <thead><tr><th>Situation</th><th>Calling the model directly</th><th>Exact-match cache</th><th>Sieve</th></tr></thead>
+        <thead><tr><th>Situation</th><th>Calling the model directly</th><th>Exact-match cache</th><th>Recura</th></tr></thead>
         <tbody>
           <tr><td>Same question, new wording</td><td class="n">Paid again</td><td class="n">Paid again</td><td class="y">Answered from cache</td></tr>
           <tr><td>Typos, filler words, Hinglish</td><td class="n">Paid again</td><td class="n">Paid again</td><td class="y">Answered from cache</td></tr>
@@ -509,10 +509,10 @@ section.s{scroll-margin-top:62px}
       <p>With no API key, two mock models answer, so you can try caching and fallback before spending anything.</p>
     </div>
     <div class="deploy">
-      <div class="card dep"><span class="label">Your computer</span><h3>Download and run</h3><p>Windows, macOS and Linux builds. Extract, run the start script, open localhost:8080.</p><a class="btn sm ghost" href="https://github.com/Prm01/sieve/releases/latest" target="_blank" rel="noopener">Get the latest release</a></div>
-      <div class="card dep"><span class="label">Docker</span><h3>One command</h3><p>A small distroless image that runs as a non-root user.</p><div class="inline-cmd"><code id="d2">docker run -p 8080:8080 ghcr.io/prm01/sieve:latest</code><button type="button" data-copy="#d2">Copy</button></div></div>
-      <div class="card dep"><span class="label">Cloud</span><h3>Render, one click</h3><p>Gateway plus a Redis-compatible store on the free plan, from <code class="i">render.yaml</code>.</p><a class="btn sm ghost" href="https://render.com/deploy?repo=https://github.com/Prm01/sieve" target="_blank" rel="noopener">Deploy to Render</a></div>
-      <div class="card dep"><span class="label">Kubernetes</span><h3>Scale out</h3><p>Three replicas, autoscaling, health probes and a read-only filesystem. Replicas share one cache.</p><div class="inline-cmd"><code id="d4">kubectl apply -f deploy/k8s/sieve.yaml</code><button type="button" data-copy="#d4">Copy</button></div></div>
+      <div class="card dep"><span class="label">Your computer</span><h3>Download and run</h3><p>Windows, macOS and Linux builds. Extract, run the start script, open localhost:8080.</p><a class="btn sm ghost" href="https://github.com/Prm01/recura/releases/latest" target="_blank" rel="noopener">Get the latest release</a></div>
+      <div class="card dep"><span class="label">Docker</span><h3>One command</h3><p>A small distroless image that runs as a non-root user.</p><div class="inline-cmd"><code id="d2">docker run -p 8080:8080 ghcr.io/prm01/recura:latest</code><button type="button" data-copy="#d2">Copy</button></div></div>
+      <div class="card dep"><span class="label">Cloud</span><h3>Render, one click</h3><p>Gateway plus a Redis-compatible store on the free plan, from <code class="i">render.yaml</code>.</p><a class="btn sm ghost" href="https://render.com/deploy?repo=https://github.com/Prm01/recura" target="_blank" rel="noopener">Deploy to Render</a></div>
+      <div class="card dep"><span class="label">Kubernetes</span><h3>Scale out</h3><p>Three replicas, autoscaling, health probes and a read-only filesystem. Replicas share one cache.</p><div class="inline-cmd"><code id="d4">kubectl apply -f deploy/k8s/recura.yaml</code><button type="button" data-copy="#d4">Copy</button></div></div>
     </div>
   </div>
 </section>
@@ -522,7 +522,7 @@ section.s{scroll-margin-top:62px}
     <div class="shead">
       <span class="eyebrow">Engineering decisions</span>
       <h2>What I chose, and what it cost.</h2>
-      <p>Every part of Sieve is a trade-off. These are the ones that mattered most.</p>
+      <p>Every part of Recura is a trade-off. These are the ones that mattered most.</p>
     </div>
     <div class="acc" id="acc"></div>
   </div>
@@ -530,7 +530,7 @@ section.s{scroll-margin-top:62px}
 
 <section class="s" id="faq">
   <div class="wrap two">
-    <div class="shead" style="margin:0"><span class="eyebrow">Questions</span><h2>Frequently asked.</h2><p>Something else? <a href="https://github.com/Prm01/sieve/issues" target="_blank" rel="noopener">Open an issue</a> on GitHub.</p></div>
+    <div class="shead" style="margin:0"><span class="eyebrow">Questions</span><h2>Frequently asked.</h2><p>Something else? <a href="https://github.com/Prm01/recura/issues" target="_blank" rel="noopener">Open an issue</a> on GitHub.</p></div>
     <div class="acc" id="faqs"></div>
   </div>
 </section>
@@ -556,7 +556,7 @@ section.s{scroll-margin-top:62px}
       <div>
         <span class="label" style="color:color-mix(in srgb,var(--bg) 60%,transparent)">Built by</span>
         <h2>Pramod Yadav</h2>
-        <p>Final-year student. I designed, built and benchmarked Sieve to learn how production AI systems handle cost, latency and failure. Open to backend, platform and AI infrastructure roles.</p>
+        <p>Final-year student. I designed, built and benchmarked Recura to learn how production AI systems handle cost, latency and failure. Open to backend, platform and AI infrastructure roles.</p>
         <div class="mail"><span id="email">pramodyadav2948@gmail.com</span><button type="button" data-copy="#email" data-copy-label="Email copied">Copy email</button></div>
       </div>
       <div class="acts">
@@ -569,9 +569,9 @@ section.s{scroll-margin-top:62px}
 
 <footer class="f">
   <div class="wrap">
-    <div><a class="brand" href="/" style="display:inline-flex"><span class="mark" aria-hidden="true"></span>Sieve</a><p style="margin-top:10px;max-width:36ch">Open-source LLM gateway. MIT licence. Version <span data-version>–</span>.</p></div>
+    <div><a class="brand" href="/" style="display:inline-flex"><span class="mark" aria-hidden="true"></span>Recura</a><p style="margin-top:10px;max-width:36ch">Open-source LLM gateway. MIT licence. Version <span data-version>–</span>.</p></div>
     <div><h4>Product</h4><a href="/console">Live console</a><a href="/docs">Documentation</a><a href="/metrics">Metrics</a></div>
-    <div><h4>Project</h4><a href="https://github.com/Prm01/sieve" target="_blank" rel="noopener">Source code</a><a href="https://github.com/Prm01/sieve/releases" target="_blank" rel="noopener">Releases</a><a href="https://github.com/Prm01/sieve/blob/main/docs/ARCHITECTURE.md" target="_blank" rel="noopener">Design decisions</a></div>
+    <div><h4>Project</h4><a href="https://github.com/Prm01/recura" target="_blank" rel="noopener">Source code</a><a href="https://github.com/Prm01/recura/releases" target="_blank" rel="noopener">Releases</a><a href="https://github.com/Prm01/recura/blob/main/docs/ARCHITECTURE.md" target="_blank" rel="noopener">Design decisions</a></div>
     <div><h4>Author</h4><a href="https://www.linkedin.com/in/pramod-yadav-7810b5299" target="_blank" rel="noopener">LinkedIn</a><a href="https://github.com/Prm01" target="_blank" rel="noopener">GitHub</a></div>
   </div>
 </footer>
@@ -582,7 +582,7 @@ const $=id=>document.getElementById(id);
 const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 const reduce=matchMedia('(prefers-reduced-motion: reduce)').matches;
 const sleep=ms=>new Promise(r=>setTimeout(r,reduce?0:ms));
-const fmt=v=>sieve.fmtMs(v);
+const fmt=v=>recura.fmtMs(v);
 
 /* ---------- terminal ---------- */
 const term=$('term');let termRun=0;
@@ -601,8 +601,8 @@ $('runlive').addEventListener('click',async()=>{const b=$('runlive');b.disabled=
  const n=POOL[Math.floor(Math.random()*POOL.length)];
  const qs=[`How do I change my ${n} settings?`,`pls how to change ${n} settings`];
  try{for(const q of qs){newLine('p').textContent='$ ';newLine().textContent=`ask "${q}"\n`;
-   const t0=performance.now();const r=await fetch('/v1/chat/completions',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({model:'sieve',messages:[{role:'user',content:q}]})});
-   const ms=performance.now()-t0;const c=r.headers.get('X-Sieve-Cache')||'ERR';const sim=r.headers.get('X-Sieve-Similarity');const prov=r.headers.get('X-Sieve-Provider');const gw=r.headers.get('X-Sieve-Latency-Ms');
+   const t0=performance.now();const r=await fetch('/v1/chat/completions',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({model:'recura',messages:[{role:'user',content:q}]})});
+   const ms=performance.now()-t0;const c=r.headers.get('X-Recura-Cache')||'ERR';const sim=r.headers.get('X-Recura-Similarity');const prov=r.headers.get('X-Recura-Provider');const gw=r.headers.get('X-Recura-Latency-Ms');
    if(r.status===429){newLine('b').textContent='  429 rate limited · try again in '+(r.headers.get('Retry-After')||'a few')+' s\n\n';break}
    if(r.status===401){newLine('b').textContent='  401 · this gateway needs an API key. Use the console.\n\n';break}
    const j=await r.json();if(!r.ok)throw new Error(j.error&&j.error.message||r.statusText);
@@ -755,9 +755,9 @@ calc();
   else if(!live&&!reduce){simAcc+=dt;while(simAcc>170){simAcc-=170;spawn(simKind())}}
   draw();if(!reduce)requestAnimationFrame(frame)}
  function draw(){const gx=gateX(),mx=modelX(),b=bot();cx.clearRect(0,0,W,H);
-  // gate: a vertical sieve of short bars
+  // gate: a vertical filter of short bars
   cx.fillStyle='rgba(224,161,0,.9)';for(let y=top-8;y<b+8;y+=11){cx.fillRect(gx-1.5,y,3,6)}
-  cx.font='11px "IBM Plex Mono", monospace';cx.textAlign='center';cx.fillStyle='#7F8A8F';cx.fillText('SIEVE',gx,b+22);
+  cx.font='11px "IBM Plex Mono", monospace';cx.textAlign='center';cx.fillStyle='#7F8A8F';cx.fillText('RECURA',gx,b+22);
   // model box
   cx.strokeStyle='rgba(217,222,217,.18)';cx.lineWidth=1;cx.beginPath();cx.roundRect?cx.roundRect(mx-26,top-6,52,b-top+12,10):cx.rect(mx-26,top-6,52,b-top+12);cx.stroke();cx.fillText('MODEL',mx,b+22);
   for(const p of parts){p.t++;
@@ -784,24 +784,24 @@ curl -i localhost:8080/v1/chat/completions \\
 curl -i localhost:8080/v1/chat/completions \\
   -d <span class="s">'{"messages":[{"role":"user","content":"Password bhool gaya, kya karu"}]}'</span>
 
-<span class="c"># X-Sieve-Cache: HIT
-# X-Sieve-Similarity: 1.0000
-# X-Sieve-Latency-Ms: 0.11</span>`,
+<span class="c"># X-Recura-Cache: HIT
+# X-Recura-Similarity: 1.0000
+# X-Recura-Latency-Ms: 0.11</span>`,
  'Python':`<span class="k">from</span> openai <span class="k">import</span> OpenAI
 
-client = OpenAI(base_url=<span class="s">"http://localhost:8080/v1"</span>, api_key=<span class="s">"sk-sieve-team-a"</span>)
+client = OpenAI(base_url=<span class="s">"http://localhost:8080/v1"</span>, api_key=<span class="s">"sk-recura-team-a"</span>)
 
 r = client.chat.completions.with_raw_response.create(
-    model=<span class="s">"sieve"</span>,
+    model=<span class="s">"recura"</span>,
     messages=[{<span class="s">"role"</span>: <span class="s">"user"</span>, <span class="s">"content"</span>: <span class="s">"What is your refund policy?"</span>}],
 )
-<span class="f">print</span>(r.headers[<span class="s">"X-Sieve-Cache"</span>], r.parse().choices[0].message.content)`,
+<span class="f">print</span>(r.headers[<span class="s">"X-Recura-Cache"</span>], r.parse().choices[0].message.content)`,
  'Node.js':`<span class="k">import</span> OpenAI <span class="k">from</span> <span class="s">"openai"</span>;
 
-<span class="k">const</span> client = <span class="k">new</span> OpenAI({ baseURL: <span class="s">"http://localhost:8080/v1"</span>, apiKey: <span class="s">"sk-sieve-team-a"</span> });
+<span class="k">const</span> client = <span class="k">new</span> OpenAI({ baseURL: <span class="s">"http://localhost:8080/v1"</span>, apiKey: <span class="s">"sk-recura-team-a"</span> });
 
 <span class="k">const</span> stream = <span class="k">await</span> client.chat.completions.create({
-  model: <span class="s">"sieve"</span>, stream: <span class="k">true</span>,
+  model: <span class="s">"recura"</span>, stream: <span class="k">true</span>,
   messages: [{ role: <span class="s">"user"</span>, content: <span class="s">"Explain CAP theorem simply"</span> }],
 });
 <span class="k">for await</span> (<span class="k">const</span> chunk <span class="k">of</span> stream) process.stdout.<span class="f">write</span>(chunk.choices[0]?.delta?.content ?? <span class="s">""</span>);`,
@@ -809,12 +809,12 @@ r = client.chat.completions.with_raw_response.create(
 
 llm = ChatOpenAI(
     base_url=<span class="s">"http://localhost:8080/v1"</span>,
-    api_key=<span class="s">"sk-sieve-team-a"</span>,
-    model=<span class="s">"sieve"</span>,
+    api_key=<span class="s">"sk-recura-team-a"</span>,
+    model=<span class="s">"recura"</span>,
 )
 <span class="f">print</span>(llm.invoke(<span class="s">"How long does shipping take?"</span>).content)`,
  'Docker Compose':`<span class="c"># Gateway + Redis + Prometheus + Grafana, dashboard preloaded</span>
-git clone https://github.com/Prm01/sieve && <span class="k">cd</span> sieve
+git clone https://github.com/Prm01/recura && <span class="k">cd</span> recura
 docker compose up --build
 
 <span class="c"># Gateway   http://localhost:8080
@@ -823,7 +823,7 @@ const names=Object.keys(CODE);
 $('tabs').innerHTML=names.map((n,i)=>`<button type="button" role="tab" aria-selected="${i===0}" data-n="${n}">${n}</button>`).join('');
 function showTab(n){document.querySelectorAll('#tabs button').forEach(b=>b.setAttribute('aria-selected',b.dataset.n===n));$('codepre').innerHTML=CODE[n]}
 $('tabs').addEventListener('click',e=>{const b=e.target.closest('button');if(b)showTab(b.dataset.n)});
-$('codecopy').addEventListener('click',()=>sieve.copy($('codepre').innerText,'Code copied'));
+$('codecopy').addEventListener('click',()=>recura.copy($('codepre').innerText,'Code copied'));
 showTab('curl');
 
 /* ---------- decisions + faq ---------- */
@@ -834,9 +834,9 @@ const DEC=[['A similarity threshold of 0.85','I swept 0.50 to 0.95 on 2,000 repl
 ['The rate limiter fails open','If Redis is unreachable, requests are allowed and the error is counted. A limiter outage should not become a product outage.','During a Redis outage, limits are not enforced.'],
 ['Coalescing works within one replica','Sharing calls across replicas would need a distributed lock, which costs a Redis round trip on every miss.','With several replicas, each can make one call for the same burst.']];
 $('acc').innerHTML=DEC.map(([t,w,c],i)=>`<details${i===0?' open':''}><summary>${t}</summary><div class="body"><div><span class="k">Why</span><p>${w}</p></div><div><span class="k">What it costs</span><p>${c}</p></div></div></details>`).join('');
-const FAQ=[['Does it work with my existing code?','Yes, if your code uses the OpenAI API or an SDK that lets you set a base URL. Point it at Sieve and keep everything else, including streaming.'],
+const FAQ=[['Does it work with my existing code?','Yes, if your code uses the OpenAI API or an SDK that lets you set a base URL. Point it at Recura and keep everything else, including streaming.'],
 ['Will users ever get the wrong answer?','At the default threshold the benchmark served none. Your traffic is different, so check the similarity histogram in Grafana before lowering it. Any user can flag a cached answer, and it is never served again.'],
-['Which models can it call?','Anthropic Claude, OpenAI, Google Gemini, and any OpenAI-compatible server such as Ollama, vLLM, LM Studio, Groq or OpenRouter. List several and Sieve falls back in order.'],
+['Which models can it call?','Anthropic Claude, OpenAI, Google Gemini, and any OpenAI-compatible server such as Ollama, vLLM, LM Studio, Groq or OpenRouter. List several and Recura falls back in order.'],
 ['Do I need Redis?','No. Without it the cache and rate limits live in memory, which is fine for one instance. Add Redis when you run several replicas, so they share one cache and one limit.'],
 ['How does it understand meaning?','The built-in embedder matches words, spelling variants and synonyms you list, which suits FAQ-style traffic and needs no API. For open-ended traffic, plug in any embeddings API and re-tune the threshold.'],
 ['Is it production-ready?','It is tested with the race detector against real Redis on every commit, and each choice is documented with its trade-off. It has not yet run at large scale, and the docs list its limitations plainly.']];

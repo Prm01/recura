@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Renamed the project from Sieve to Recura: module path, binary, `RECURA_*` settings, `X-Recura-*` headers, `recura_*` metrics, Redis key prefix and Docker image. New logo
+
 - Built-in website: home page with a live demo, live traffic visualisation, savings calculator, interactive request pipeline and benchmark charts; documentation at /docs; console moved to /console
 - `GET /v1/public/stats` for live aggregate numbers, with no prompt text
 - Fonts ship inside the binary, so the site works offline
@@ -19,4 +21,4 @@ First public release.
 - Redis-backed shared cache across replicas
 - Prometheus metrics, Grafana dashboard
 - Web console with live pipeline, latency chart, similarity meter, provider controls and rate-limit test
-- `sievebench` workload replay and threshold sweep
+- `recurabench` workload replay and threshold sweep

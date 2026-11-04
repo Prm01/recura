@@ -1,20 +1,20 @@
 # Full local stack: gateway, Redis, Prometheus and Grafana.
 #   docker compose up --build
 # Gateway:    http://localhost:8080   (playground UI at /)
-# Grafana:    http://localhost:3000   (anonymous viewer, dashboard "Sieve")
+# Grafana:    http://localhost:3000   (anonymous viewer, dashboard "Recura")
 # Prometheus: http://localhost:9090
 services:
-  sieve:
+  recura:
     build: .
     ports: ["8080:8080"]
     environment:
-      SIEVE_REDIS_URL: redis://redis:6379/0
-      SIEVE_CONFIG: /examples/config.compose.json
+      RECURA_REDIS_URL: redis://redis:6379/0
+      RECURA_CONFIG: /examples/config.compose.json
       # Add any of these to use real models; with none, a mock model answers.
       ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
       OPENAI_API_KEY: ${OPENAI_API_KEY:-}
       GEMINI_API_KEY: ${GEMINI_API_KEY:-}
-      SIEVE_ADMIN_KEY: ${SIEVE_ADMIN_KEY:-}
+      RECURA_ADMIN_KEY: ${RECURA_ADMIN_KEY:-}
     depends_on:
       redis:
         condition: service_healthy
@@ -39,7 +39,7 @@ services:
     environment:
       GF_AUTH_ANONYMOUS_ENABLED: "true"
       GF_AUTH_ANONYMOUS_ORG_ROLE: Viewer
-      GF_DASHBOARDS_DEFAULT_HOME_DASHBOARD_PATH: /var/lib/grafana/dashboards/sieve.json
+      GF_DASHBOARDS_DEFAULT_HOME_DASHBOARD_PATH: /var/lib/grafana/dashboards/recura.json
     volumes:
       - ./deploy/grafana/provisioning:/etc/grafana/provisioning:ro
       - ./deploy/grafana/dashboards:/var/lib/grafana/dashboards:ro

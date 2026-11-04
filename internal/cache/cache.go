@@ -1,4 +1,4 @@
-// Package cache is Sieve's semantic cache: an in-memory vector index of
+// Package cache is Recura's semantic cache: an in-memory vector index of
 // past prompts and their answers, optionally mirrored to Redis so every
 // gateway replica shares the same cache.
 package cache
@@ -12,7 +12,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/Prm01/sieve/internal/embed"
+	"github.com/Prm01/recura/internal/embed"
 )
 
 // Entry is one cached prompt and its answer.

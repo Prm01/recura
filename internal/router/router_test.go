@@ -6,7 +6,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/Prm01/sieve/internal/provider"
+	"github.com/Prm01/recura/internal/provider"
 )
 
 type fake struct {

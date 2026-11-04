@@ -6,6 +6,6 @@ labels: enhancement
 
 **The problem you are trying to solve**
 
-**What you would like Sieve to do**
+**What you would like Recura to do**
 
 **Alternatives you considered**

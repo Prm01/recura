@@ -1,4 +1,4 @@
-// Package server exposes Sieve over HTTP with an OpenAI-compatible API, so
+// Package server exposes Recura over HTTP with an OpenAI-compatible API, so
 // any OpenAI SDK can use the gateway by changing its base URL.
 package server
 
@@ -20,13 +20,13 @@ import (
 	"sync"
 	"time"
 
-	"github.com/Prm01/sieve/internal/cache"
-	sembed "github.com/Prm01/sieve/internal/embed"
-	"github.com/Prm01/sieve/internal/metrics"
-	"github.com/Prm01/sieve/internal/privacy"
-	"github.com/Prm01/sieve/internal/provider"
-	"github.com/Prm01/sieve/internal/ratelimit"
-	"github.com/Prm01/sieve/internal/router"
+	"github.com/Prm01/recura/internal/cache"
+	sembed "github.com/Prm01/recura/internal/embed"
+	"github.com/Prm01/recura/internal/metrics"
+	"github.com/Prm01/recura/internal/privacy"
+	"github.com/Prm01/recura/internal/provider"
+	"github.com/Prm01/recura/internal/ratelimit"
+	"github.com/Prm01/recura/internal/router"
 )
 
 //go:embed static
@@ -71,22 +71,22 @@ type Metrics struct {
 	EmbedderErrors metrics.Counter
 }
 
-// NewMetrics registers Sieve's metrics on a new registry.
+// NewMetrics registers Recura's metrics on a new registry.
 func NewMetrics(c *cache.Cache) *Metrics {
 	r := metrics.NewRegistry()
 	m := &Metrics{
 		Reg:            r,
-		Requests:       r.Counter("sieve_requests_total", "Chat requests by outcome.", "result"),
-		Duration:       r.Histogram("sieve_request_duration_seconds", "End-to-end request latency by outcome.", metrics.DefaultLatencyBuckets, "result"),
-		ProviderCalls:  r.Counter("sieve_provider_requests_total", "Upstream model calls.", "provider", "status"),
-		ProviderTime:   r.Histogram("sieve_provider_duration_seconds", "Upstream model latency.", metrics.DefaultLatencyBuckets, "provider"),
-		Similarity:     r.Histogram("sieve_cache_similarity", "Similarity of the nearest cache entry for each lookup.", []float64{0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.75, 0.8, 0.85, 0.9, 0.95, 1}),
-		TokensSaved:    r.Counter("sieve_tokens_saved_total", "Estimated output tokens served from cache instead of a model."),
-		LimiterErrors:  r.Counter("sieve_ratelimit_errors_total", "Rate limiter backend errors (requests were allowed)."),
-		EmbedderErrors: r.Counter("sieve_embedder_errors_total", "Embedding failures (requests bypassed the cache)."),
+		Requests:       r.Counter("recura_requests_total", "Chat requests by outcome.", "result"),
+		Duration:       r.Histogram("recura_request_duration_seconds", "End-to-end request latency by outcome.", metrics.DefaultLatencyBuckets, "result"),
+		ProviderCalls:  r.Counter("recura_provider_requests_total", "Upstream model calls.", "provider", "status"),
+		ProviderTime:   r.Histogram("recura_provider_duration_seconds", "Upstream model latency.", metrics.DefaultLatencyBuckets, "provider"),
+		Similarity:     r.Histogram("recura_cache_similarity", "Similarity of the nearest cache entry for each lookup.", []float64{0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.75, 0.8, 0.85, 0.9, 0.95, 1}),
+		TokensSaved:    r.Counter("recura_tokens_saved_total", "Estimated output tokens served from cache instead of a model."),
+		LimiterErrors:  r.Counter("recura_ratelimit_errors_total", "Rate limiter backend errors (requests were allowed)."),
+		EmbedderErrors: r.Counter("recura_embedder_errors_total", "Embedding failures (requests bypassed the cache)."),
 	}
 	if c != nil {
-		r.GaugeFunc("sieve_cache_entries", "Live entries in the semantic cache.", func() float64 { return float64(c.Stats().Live) })
+		r.GaugeFunc("recura_cache_entries", "Live entries in the semantic cache.", func() float64 { return float64(c.Stats().Live) })
 	}
 	return m
 }
@@ -139,9 +139,9 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		for _, o := range s.o.CORSOrigins {
 			if o == "*" || o == origin {
 				w.Header().Set("Access-Control-Allow-Origin", o)
-				w.Header().Set("Access-Control-Allow-Headers", "Authorization, Content-Type, X-Sieve-Cache")
+				w.Header().Set("Access-Control-Allow-Headers", "Authorization, Content-Type, X-Recura-Cache")
 				w.Header().Set("Access-Control-Allow-Methods", "GET, POST, DELETE, OPTIONS")
-				w.Header().Set("Access-Control-Expose-Headers", "X-Sieve-Cache, X-Sieve-Coalesced, X-Sieve-Similarity, X-Sieve-Entry, X-Sieve-Provider, X-Sieve-Latency-Ms, X-RateLimit-Remaining, Retry-After")
+				w.Header().Set("Access-Control-Expose-Headers", "X-Recura-Cache, X-Recura-Coalesced, X-Recura-Similarity, X-Recura-Entry, X-Recura-Provider, X-Recura-Latency-Ms, X-RateLimit-Remaining, Retry-After")
 				break
 			}
 		}
@@ -241,12 +241,12 @@ func (s *Server) chat(w http.ResponseWriter, r *http.Request) {
 		apiError(w, 400, "invalid_request", err.Error())
 		return
 	}
-	if strings.EqualFold(r.Header.Get("X-Sieve-Cache"), "off") || s.o.Privacy.Personal(userText) {
+	if strings.EqualFold(r.Header.Get("X-Recura-Cache"), "off") || s.o.Privacy.Personal(userText) {
 		cacheable = false
 	}
 	model := req.Model
 	if model == "" {
-		model = "sieve"
+		model = "recura"
 	}
 
 	var vec []float32
@@ -269,7 +269,7 @@ func (s *Server) chat(w http.ResponseWriter, r *http.Request) {
 			if s.o.Metrics != nil {
 				s.o.Metrics.Similarity.Observe(float64(m.Score))
 			}
-			w.Header().Set("X-Sieve-Similarity", strconv.FormatFloat(float64(m.Score), 'f', 4, 32))
+			w.Header().Set("X-Recura-Similarity", strconv.FormatFloat(float64(m.Score), 'f', 4, 32))
 		}
 		if m.Hit {
 			oc.result, oc.entryID, oc.provider = "hit", m.Entry.ID, m.Entry.Provider
@@ -277,9 +277,9 @@ func (s *Server) chat(w http.ResponseWriter, r *http.Request) {
 			if s.o.Metrics != nil {
 				s.o.Metrics.TokensSaved.Add(float64(len(m.Entry.Response) / 4))
 			}
-			w.Header().Set("X-Sieve-Cache", "HIT")
-			w.Header().Set("X-Sieve-Entry", m.Entry.ID)
-			w.Header().Set("X-Sieve-Latency-Ms", fmtMs(time.Since(oc.start)))
+			w.Header().Set("X-Recura-Cache", "HIT")
+			w.Header().Set("X-Recura-Entry", m.Entry.ID)
+			w.Header().Set("X-Recura-Latency-Ms", fmtMs(time.Since(oc.start)))
 			meta := map[string]any{"cache": "hit", "similarity": m.Score, "entry_id": m.Entry.ID, "matched_prompt": m.Entry.Prompt, "provider": m.Entry.Provider}
 			if req.Stream {
 				sw := newStream(w, model)
@@ -291,7 +291,7 @@ func (s *Server) chat(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		oc.result = "miss"
-		w.Header().Set("X-Sieve-Cache", "MISS")
+		w.Header().Set("X-Recura-Cache", "MISS")
 		f, score, leader := (*flight)(nil), float32(0), true
 		if !s.o.NoCoalesce {
 			f, score, leader = s.flights.join(partition, userText, vec, s.o.Cache.Threshold())
@@ -314,7 +314,7 @@ func (s *Server) chat(w http.ResponseWriter, r *http.Request) {
 		}
 	} else {
 		oc.result = "bypass"
-		w.Header().Set("X-Sieve-Cache", "BYPASS")
+		w.Header().Set("X-Recura-Cache", "BYPASS")
 	}
 
 	preq := provider.Request{Messages: msgs, MaxTokens: req.MaxTokens, Temperature: req.Temperature}
@@ -325,7 +325,7 @@ func (s *Server) chat(w http.ResponseWriter, r *http.Request) {
 		var sw *stream
 		res, used, attempts, err = s.o.Router.Complete(r.Context(), preq, func(p, delta string) {
 			if sw == nil {
-				w.Header().Set("X-Sieve-Provider", p)
+				w.Header().Set("X-Recura-Provider", p)
 				sw = newStream(w, model)
 			}
 			sw.delta(delta)
@@ -341,12 +341,12 @@ func (s *Server) chat(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		if sw == nil { // empty answer
-			w.Header().Set("X-Sieve-Provider", used)
+			w.Header().Set("X-Recura-Provider", used)
 			sw = newStream(w, model)
 		}
 		entryID := s.store(r.Context(), cacheable, partition, userText, vec, res.Text, used)
 		lead.publish(res.Text, entryID, used)
-		sw.finish(map[string]any{"cache": strings.ToLower(w.Header().Get("X-Sieve-Cache")), "entry_id": entryID, "provider": used, "attempts": attempts})
+		sw.finish(map[string]any{"cache": strings.ToLower(w.Header().Get("X-Recura-Cache")), "entry_id": entryID, "provider": used, "attempts": attempts})
 		oc.entryID = entryID
 		return
 	}
@@ -360,12 +360,12 @@ func (s *Server) chat(w http.ResponseWriter, r *http.Request) {
 	entryID := s.store(r.Context(), cacheable, partition, userText, vec, res.Text, used)
 	lead.publish(res.Text, entryID, used)
 	oc.entryID = entryID
-	w.Header().Set("X-Sieve-Provider", used)
+	w.Header().Set("X-Recura-Provider", used)
 	if entryID != "" {
-		w.Header().Set("X-Sieve-Entry", entryID)
+		w.Header().Set("X-Recura-Entry", entryID)
 	}
-	w.Header().Set("X-Sieve-Latency-Ms", fmtMs(time.Since(oc.start)))
-	meta := map[string]any{"cache": strings.ToLower(w.Header().Get("X-Sieve-Cache")), "entry_id": entryID, "provider": used, "attempts": attempts}
+	w.Header().Set("X-Recura-Latency-Ms", fmtMs(time.Since(oc.start)))
+	meta := map[string]any{"cache": strings.ToLower(w.Header().Get("X-Recura-Cache")), "entry_id": entryID, "provider": used, "attempts": attempts}
 	writeJSON(w, 200, completion(model, res.Text, res.InputTokens, res.OutputTokens, meta))
 }
 
@@ -383,14 +383,14 @@ func (s *Server) serveCoalesced(w http.ResponseWriter, oc *outcome, stream bool,
 		s.o.Metrics.TokensSaved.Add(float64(len(f.text) / 4))
 	}
 	h := w.Header()
-	h.Set("X-Sieve-Cache", "HIT")
-	h.Set("X-Sieve-Coalesced", "true")
-	h.Set("X-Sieve-Similarity", strconv.FormatFloat(float64(score), 'f', 4, 32))
+	h.Set("X-Recura-Cache", "HIT")
+	h.Set("X-Recura-Coalesced", "true")
+	h.Set("X-Recura-Similarity", strconv.FormatFloat(float64(score), 'f', 4, 32))
 	if f.entryID != "" {
-		h.Set("X-Sieve-Entry", f.entryID)
+		h.Set("X-Recura-Entry", f.entryID)
 	}
-	h.Set("X-Sieve-Provider", f.provider)
-	h.Set("X-Sieve-Latency-Ms", fmtMs(time.Since(oc.start)))
+	h.Set("X-Recura-Provider", f.provider)
+	h.Set("X-Recura-Latency-Ms", fmtMs(time.Since(oc.start)))
 	meta := map[string]any{"cache": "hit", "coalesced": true, "similarity": score, "entry_id": f.entryID, "matched_prompt": f.prompt, "provider": f.provider}
 	if stream {
 		sw := newStream(w, model)
@@ -520,9 +520,9 @@ func (s *Server) record(r *http.Request, oc outcome) {
 // ---- other endpoints ---------------------------------------------------
 
 func (s *Server) models(w http.ResponseWriter, _ *http.Request) {
-	data := []map[string]any{{"id": "sieve", "object": "model", "owned_by": "sieve"}}
+	data := []map[string]any{{"id": "recura", "object": "model", "owned_by": "recura"}}
 	for _, p := range s.o.Router.Status() {
-		data = append(data, map[string]any{"id": p.Name, "object": "model", "owned_by": "sieve"})
+		data = append(data, map[string]any{"id": p.Name, "object": "model", "owned_by": "recura"})
 	}
 	writeJSON(w, 200, map[string]any{"object": "list", "data": data})
 }
@@ -556,7 +556,7 @@ func (s *Server) admin(h http.HandlerFunc) http.HandlerFunc {
 		if s.o.AdminKey != "" {
 			key := strings.TrimPrefix(r.Header.Get("Authorization"), "Bearer ")
 			if subtle.ConstantTimeCompare([]byte(key), []byte(s.o.AdminKey)) != 1 {
-				apiError(w, 401, "invalid_admin_key", "This endpoint needs the admin key: Authorization: Bearer <SIEVE_ADMIN_KEY>.")
+				apiError(w, 401, "invalid_admin_key", "This endpoint needs the admin key: Authorization: Bearer <RECURA_ADMIN_KEY>.")
 				return
 			}
 		}
@@ -629,7 +629,7 @@ func completion(model, text string, in, out int, meta map[string]any) map[string
 		"model":   model,
 		"choices": []map[string]any{{"index": 0, "message": map[string]string{"role": "assistant", "content": text}, "finish_reason": "stop"}},
 		"usage":   map[string]int{"prompt_tokens": in, "completion_tokens": out, "total_tokens": in + out},
-		"sieve":   meta,
+		"recura":  meta,
 	}
 }
 
@@ -672,7 +672,7 @@ func (s *stream) send(delta map[string]any, finish any, extra map[string]any) {
 func (s *stream) delta(t string) { s.send(map[string]any{"content": t}, nil, nil) }
 
 func (s *stream) finish(meta map[string]any) {
-	s.send(map[string]any{}, "stop", map[string]any{"sieve": meta})
+	s.send(map[string]any{}, "stop", map[string]any{"recura": meta})
 	s.done()
 }
 

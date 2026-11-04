@@ -9,4 +9,4 @@ Things that count as security issues:
 - personal data being cached despite matching a privacy pattern
 - leaking provider API keys in logs, headers or error messages
 
-Sieve stores prompts and answers in memory and, if configured, in Redis. Protect Redis with a password and a private network, and set `SIEVE_API_KEYS` and `SIEVE_ADMIN_KEY` on any gateway reachable from the internet.
+Recura stores prompts and answers in memory and, if configured, in Redis. Protect Redis with a password and a private network, and set `RECURA_API_KEYS` and `RECURA_ADMIN_KEY` on any gateway reachable from the internet.

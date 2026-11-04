@@ -3,7 +3,7 @@ package server
 import (
 	"sync"
 
-	"github.com/Prm01/sieve/internal/embed"
+	"github.com/Prm01/recura/internal/embed"
 )
 
 // Request coalescing. When the cache is cold and many users ask the same

@@ -1,20 +1,20 @@
 # Minimal production layout: 3 gateway replicas sharing one Redis.
-# kubectl create secret generic sieve-secrets \
-#   --from-literal=ANTHROPIC_API_KEY=... --from-literal=SIEVE_ADMIN_KEY=... \
-#   --from-literal=SIEVE_API_KEYS='sk-team-a:team-a'
-# kubectl apply -f deploy/k8s/sieve.yaml
+# kubectl create secret generic recura-secrets \
+#   --from-literal=ANTHROPIC_API_KEY=... --from-literal=RECURA_ADMIN_KEY=... \
+#   --from-literal=RECURA_API_KEYS='sk-team-a:team-a'
+# kubectl apply -f deploy/k8s/recura.yaml
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: sieve
-  labels: {app: sieve}
+  name: recura
+  labels: {app: recura}
 spec:
   replicas: 3
   selector:
-    matchLabels: {app: sieve}
+    matchLabels: {app: recura}
   template:
     metadata:
-      labels: {app: sieve}
+      labels: {app: recura}
       annotations:
         prometheus.io/scrape: "true"
         prometheus.io/port: "8080"
@@ -23,14 +23,14 @@ spec:
       securityContext:
         runAsNonRoot: true
       containers:
-        - name: sieve
-          image: ghcr.io/prm01/sieve:latest
+        - name: recura
+          image: ghcr.io/prm01/recura:latest
           ports: [{containerPort: 8080, name: http}]
           env:
-            - {name: SIEVE_REDIS_URL, value: "redis://sieve-redis:6379/0"}
-            - {name: SIEVE_THRESHOLD, value: "0.85"}
+            - {name: RECURA_REDIS_URL, value: "redis://recura-redis:6379/0"}
+            - {name: RECURA_THRESHOLD, value: "0.85"}
           envFrom:
-            - secretRef: {name: sieve-secrets}
+            - secretRef: {name: recura-secrets}
           readinessProbe:
             httpGet: {path: /healthz, port: http}
             periodSeconds: 5
@@ -47,17 +47,17 @@ spec:
 apiVersion: v1
 kind: Service
 metadata:
-  name: sieve
+  name: recura
 spec:
-  selector: {app: sieve}
+  selector: {app: recura}
   ports: [{port: 80, targetPort: http, name: http}]
 ---
 apiVersion: autoscaling/v2
 kind: HorizontalPodAutoscaler
 metadata:
-  name: sieve
+  name: recura
 spec:
-  scaleTargetRef: {apiVersion: apps/v1, kind: Deployment, name: sieve}
+  scaleTargetRef: {apiVersion: apps/v1, kind: Deployment, name: recura}
   minReplicas: 3
   maxReplicas: 20
   metrics:
@@ -69,14 +69,14 @@ spec:
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: sieve-redis
+  name: recura-redis
 spec:
   replicas: 1
   selector:
-    matchLabels: {app: sieve-redis}
+    matchLabels: {app: recura-redis}
   template:
     metadata:
-      labels: {app: sieve-redis}
+      labels: {app: recura-redis}
     spec:
       containers:
         - name: redis
@@ -87,7 +87,7 @@ spec:
 apiVersion: v1
 kind: Service
 metadata:
-  name: sieve-redis
+  name: recura-redis
 spec:
-  selector: {app: sieve-redis}
+  selector: {app: recura-redis}
   ports: [{port: 6379}]

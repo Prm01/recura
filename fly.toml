@@ -1,14 +1,14 @@
 # fly launch --copy-config --no-deploy && fly deploy
 # Runs one machine with an in-memory cache. For several machines, attach Redis
-# and set SIEVE_REDIS_URL (fly secrets set SIEVE_REDIS_URL=redis://...).
-app = "sieve-demo"
+# and set RECURA_REDIS_URL (fly secrets set RECURA_REDIS_URL=redis://...).
+app = "recura-demo"
 primary_region = "bom"
 
 [build]
   dockerfile = "Dockerfile"
 
 [env]
-  SIEVE_CONFIG = "/examples/config.public.json"
+  RECURA_CONFIG = "/examples/config.public.json"
 
 [http_service]
   internal_port = 8080

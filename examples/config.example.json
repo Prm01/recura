@@ -47,8 +47,8 @@
     }
   ],
   "api_keys": {
-    "sk-sieve-team-a": "team-a",
-    "sk-sieve-team-b": "team-b"
+    "sk-recura-team-a": "team-a",
+    "sk-recura-team-b": "team-b"
   },
   "admin_key": "change-me",
   "synonyms": {

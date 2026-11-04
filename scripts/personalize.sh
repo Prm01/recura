@@ -13,4 +13,4 @@ for f in $files; do
   rm -f "$f.bak"
 done
 gofmt -l . >/dev/null
-go build ./... && echo "Done. Module path is now github.com/${user}/sieve."
+go build ./... && echo "Done. Module path is now github.com/${user}/recura."

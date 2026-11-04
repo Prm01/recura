@@ -1,4 +1,4 @@
-// Package config loads Sieve's settings from an optional JSON file and
+// Package config loads Recura's settings from an optional JSON file and
 // environment variables. Environment variables win.
 package config
 
@@ -105,11 +105,11 @@ func Default() Config {
 	return c
 }
 
-// Load reads the file named by SIEVE_CONFIG (if set), then applies
+// Load reads the file named by RECURA_CONFIG (if set), then applies
 // environment overrides, then fills providers from API-key variables.
 func Load() (Config, error) {
 	c := Default()
-	if path := os.Getenv("SIEVE_CONFIG"); path != "" {
+	if path := os.Getenv("RECURA_CONFIG"); path != "" {
 		raw, err := os.ReadFile(path)
 		if err != nil {
 			return c, fmt.Errorf("config: %w", err)
@@ -148,29 +148,29 @@ func Load() (Config, error) {
 			}
 		}
 	}
-	str("SIEVE_ADDR", &c.Addr)
-	if p := os.Getenv("PORT"); p != "" && os.Getenv("SIEVE_ADDR") == "" {
+	str("RECURA_ADDR", &c.Addr)
+	if p := os.Getenv("PORT"); p != "" && os.Getenv("RECURA_ADDR") == "" {
 		c.Addr = ":" + p // Render, Railway, Fly and Cloud Run set PORT
 	}
-	str("SIEVE_REDIS_URL", &c.RedisURL)
-	num("SIEVE_THRESHOLD", &c.Threshold)
-	dur("SIEVE_TTL", &c.TTL)
-	integer("SIEVE_MAX_ENTRIES", &c.MaxEntries)
-	num("SIEVE_RATE_CAPACITY", &c.RateLimit.Capacity)
-	num("SIEVE_RATE_REFILL_PER_SEC", &c.RateLimit.RefillPerSec)
-	dur("SIEVE_PROVIDER_TIMEOUT", &c.Router.Timeout)
-	str("SIEVE_ADMIN_KEY", &c.AdminKey)
-	str("SIEVE_EMBEDDER", &c.Embedder.Type)
-	str("SIEVE_EMBED_BASE_URL", &c.Embedder.BaseURL)
-	str("SIEVE_EMBED_API_KEY", &c.Embedder.APIKey)
-	str("SIEVE_EMBED_MODEL", &c.Embedder.Model)
-	if v := os.Getenv("SIEVE_API_KEYS"); v != "" {
+	str("RECURA_REDIS_URL", &c.RedisURL)
+	num("RECURA_THRESHOLD", &c.Threshold)
+	dur("RECURA_TTL", &c.TTL)
+	integer("RECURA_MAX_ENTRIES", &c.MaxEntries)
+	num("RECURA_RATE_CAPACITY", &c.RateLimit.Capacity)
+	num("RECURA_RATE_REFILL_PER_SEC", &c.RateLimit.RefillPerSec)
+	dur("RECURA_PROVIDER_TIMEOUT", &c.Router.Timeout)
+	str("RECURA_ADMIN_KEY", &c.AdminKey)
+	str("RECURA_EMBEDDER", &c.Embedder.Type)
+	str("RECURA_EMBED_BASE_URL", &c.Embedder.BaseURL)
+	str("RECURA_EMBED_API_KEY", &c.Embedder.APIKey)
+	str("RECURA_EMBED_MODEL", &c.Embedder.Model)
+	if v := os.Getenv("RECURA_API_KEYS"); v != "" {
 		// "key1:tenantA,key2:tenantB"
 		c.APIKeys = map[string]string{}
 		for _, pair := range strings.Split(v, ",") {
 			k, t, ok := strings.Cut(strings.TrimSpace(pair), ":")
 			if !ok || k == "" || t == "" {
-				return c, fmt.Errorf("SIEVE_API_KEYS: want key:tenant pairs, got %q", pair)
+				return c, fmt.Errorf("RECURA_API_KEYS: want key:tenant pairs, got %q", pair)
 			}
 			c.APIKeys[k] = t
 		}
@@ -194,24 +194,24 @@ func Load() (Config, error) {
 }
 
 func providersFromEnv() []Provider {
-	order := strings.Split(envOr("SIEVE_PROVIDERS", "anthropic,openai,gemini"), ",")
+	order := strings.Split(envOr("RECURA_PROVIDERS", "anthropic,openai,gemini"), ",")
 	var out []Provider
 	for _, name := range order {
 		switch strings.TrimSpace(name) {
 		case "anthropic":
 			if k := os.Getenv("ANTHROPIC_API_KEY"); k != "" {
-				out = append(out, Provider{Name: "anthropic", Type: "anthropic", APIKey: k, Model: envOr("SIEVE_ANTHROPIC_MODEL", "claude-haiku-5-5")})
+				out = append(out, Provider{Name: "anthropic", Type: "anthropic", APIKey: k, Model: envOr("RECURA_ANTHROPIC_MODEL", "claude-haiku-5-5")})
 			}
 		case "openai":
 			if k := os.Getenv("OPENAI_API_KEY"); k != "" {
-				out = append(out, Provider{Name: "openai", Type: "openai", APIKey: k, BaseURL: envOr("OPENAI_BASE_URL", "https://api.openai.com/v1"), Model: envOr("SIEVE_OPENAI_MODEL", "gpt-4o-mini")})
+				out = append(out, Provider{Name: "openai", Type: "openai", APIKey: k, BaseURL: envOr("OPENAI_BASE_URL", "https://api.openai.com/v1"), Model: envOr("RECURA_OPENAI_MODEL", "gpt-4o-mini")})
 			}
 		case "gemini":
 			if k := os.Getenv("GEMINI_API_KEY"); k != "" {
-				out = append(out, Provider{Name: "gemini", Type: "gemini", APIKey: k, Model: envOr("SIEVE_GEMINI_MODEL", "gemini-2.0-flash")})
+				out = append(out, Provider{Name: "gemini", Type: "gemini", APIKey: k, Model: envOr("RECURA_GEMINI_MODEL", "gemini-2.0-flash")})
 			}
 		case "ollama":
-			out = append(out, Provider{Name: "ollama", Type: "openai", BaseURL: envOr("OLLAMA_BASE_URL", "http://localhost:11434/v1"), Model: envOr("SIEVE_OLLAMA_MODEL", "llama3.2")})
+			out = append(out, Provider{Name: "ollama", Type: "openai", BaseURL: envOr("OLLAMA_BASE_URL", "http://localhost:11434/v1"), Model: envOr("RECURA_OLLAMA_MODEL", "llama3.2")})
 		}
 	}
 	if len(out) == 0 {

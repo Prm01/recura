@@ -6,7 +6,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/Prm01/sieve/internal/resp"
+	"github.com/Prm01/recura/internal/resp"
 )
 
 func TestMemoryBucket(t *testing.T) {
@@ -44,9 +44,9 @@ func TestFailOpen(t *testing.T) {
 }
 
 func TestRedisBucket(t *testing.T) {
-	url := os.Getenv("SIEVE_TEST_REDIS")
+	url := os.Getenv("RECURA_TEST_REDIS")
 	if url == "" {
-		t.Skip("SIEVE_TEST_REDIS not set")
+		t.Skip("RECURA_TEST_REDIS not set")
 	}
 	ctx := context.Background()
 	c, err := resp.Dial(ctx, url, 4)
@@ -54,7 +54,7 @@ func TestRedisBucket(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer c.Close()
-	r := &Redis{C: c, Cfg: Config{Capacity: 2, RefillPerSec: 0.5}, Prefix: "sievetest:rl:" + time.Now().Format("150405.000") + ":"}
+	r := &Redis{C: c, Cfg: Config{Capacity: 2, RefillPerSec: 0.5}, Prefix: "recuratest:rl:" + time.Now().Format("150405.000") + ":"}
 	a, _ := r.Allow(ctx, "k")
 	b, _ := r.Allow(ctx, "k")
 	x, err := r.Allow(ctx, "k")
