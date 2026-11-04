@@ -3,345 +3,688 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>Sieve Console</title>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,800&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<title>Sieve: LLM gateway with semantic caching</title>
+<meta name="description" content="Open-source LLM gateway in Go. Answers repeated questions from a semantic cache in under a millisecond, falls back across Claude, OpenAI and Gemini, and rate-limits every user.">
+<meta property="og:title" content="Sieve: stop paying twice for the same question">
+<meta property="og:description" content="Open-source LLM gateway: semantic caching, request coalescing, provider fallback and rate limiting in one Go binary.">
+<meta name="theme-color" content="#E0A100">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%23E0A100'/%3E%3Cg fill='%2312181C'%3E%3Crect x='7' y='7' width='3' height='18'/%3E%3Crect x='14.5' y='7' width='3' height='18'/%3E%3Crect x='22' y='7' width='3' height='18'/%3E%3C/g%3E%3C/svg%3E">
+<link rel="stylesheet" href="/fonts.css">
+<link rel="stylesheet" href="/site.css">
 <style>
-/* Layout: operator console. Left = conversation through the gateway, right = live instruments. Signal amber accent, green = cache hit, rust = model call. */
-:root{
-  --bg:#EDEFEA;--panel:#F8F9F5;--sunk:#E3E6E0;--ink:#12181C;--muted:#5B656B;--line:#CDD2CB;
-  --accent:#E0A100;--accent-soft:#F6E3A8;--accent-ink:#3A2900;
-  --hit:#13794F;--hit-soft:#CFEBDD;--miss:#BC4418;--miss-soft:#F5D9CC;--deny:#7A4BB0;--deny-soft:#E6DAF3;
-  --display:"Bricolage Grotesque","Avenir Next",system-ui,sans-serif;
-  --body:"IBM Plex Sans",system-ui,-apple-system,"Segoe UI",sans-serif;
-  --mono:"IBM Plex Mono",ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
-}
-@media (prefers-color-scheme:dark){:root{
-  --bg:#0E1316;--panel:#151C20;--sunk:#0A0E10;--ink:#E7EBE8;--muted:#97A1A6;--line:#283237;
-  --accent:#F2B42C;--accent-soft:#3B2F10;--accent-ink:#F6E3A8;
-  --hit:#3DBE88;--hit-soft:#123527;--miss:#F07C4C;--miss-soft:#3D1E12;--deny:#B48CE6;--deny-soft:#2B1F3D;color-scheme:dark}}
-*{box-sizing:border-box}
-html,body{height:100%}
-body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.55 var(--body)}
-button{font:inherit;cursor:pointer;color:inherit}
-:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
-.wrap{max-width:1360px;margin:0 auto;padding:0 max(18px,env(safe-area-inset-right)) 28px max(18px,env(safe-area-inset-left))}
+/* hero */
+.hero{padding-block:clamp(40px,7vw,84px) clamp(56px,8vw,96px);position:relative;overflow:hidden}
+.hero::before{content:"";position:absolute;inset:0;background:repeating-linear-gradient(90deg,var(--line) 0 1px,transparent 1px 64px);opacity:.35;mask-image:linear-gradient(180deg,#000,transparent 85%);-webkit-mask-image:linear-gradient(180deg,#000,transparent 85%);pointer-events:none}
+.hero .wrap{position:relative;display:grid;grid-template-columns:1.05fr 1fr;gap:clamp(28px,4vw,56px);align-items:center}
+.hero .wrap>*,.integ>*,.bench>*,.two>*,.pipeout>*,.deploy>*,.probs>*,.feats>*,.tiles>*,.road>*,.author>*{min-width:0}
+section.s{scroll-margin-top:62px}
+.hero h1{font-size:clamp(46px,7vw,92px);font-weight:800;line-height:.94;letter-spacing:-.04em;margin:20px 0 22px}
+.hero h1 .hl{background:linear-gradient(transparent 60%,var(--accent) 60%,var(--accent) 90%,transparent 90%);padding:0 .04em}
+.hero .lede{font-size:clamp(17px,1.6vw,19.5px);color:var(--muted);max-width:50ch}
+.hero .cta{display:flex;gap:12px;flex-wrap:wrap;margin-top:30px}
+.hero .inline-cmd{margin-top:18px;max-width:520px}
+.proof{display:grid;grid-template-columns:repeat(4,auto);justify-content:start;gap:4px 28px;margin-top:34px;padding-top:24px;border-top:1px solid var(--line)}
+.proof b{display:block;font:800 26px/1.1 var(--display);letter-spacing:-.02em}
+.proof span{font-size:13px;color:var(--muted)}
+@media (max-width:1000px){.hero .wrap{grid-template-columns:1fr}}
+@media (max-width:560px){.proof{grid-template-columns:1fr 1fr}}
 
-/* top bar */
-.top{display:flex;align-items:center;justify-content:space-between;gap:14px;flex-wrap:wrap;padding-block:16px;border-bottom:1px solid var(--line);margin-bottom:18px}
-.brand{display:flex;align-items:center;gap:10px;font:800 22px var(--display);letter-spacing:-.02em}
-.brand i{width:24px;height:24px;border-radius:6px;background:repeating-linear-gradient(90deg,var(--ink) 0 2px,transparent 2px 5px),var(--accent)}
-.brand small{font:500 12px var(--mono);color:var(--muted);letter-spacing:.08em;text-transform:uppercase;margin-left:4px}
-.status{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
-.pill{display:inline-flex;align-items:center;gap:7px;font:500 12px var(--mono);padding:6px 11px;border-radius:999px;border:1px solid var(--line);background:var(--panel);color:var(--muted)}
-.pill i{width:8px;height:8px;border-radius:50%;background:var(--muted)}
-.pill.ok{color:var(--hit);border-color:var(--hit)}.pill.ok i{background:var(--hit);box-shadow:0 0 0 3px var(--hit-soft)}
-.pill.bad{color:var(--miss);border-color:var(--miss)}.pill.bad i{background:var(--miss)}
-.toplinks{display:flex;gap:14px;font-size:13px}
-.toplinks a{color:var(--muted);text-decoration:none}.toplinks a:hover{color:var(--ink)}
+/* terminal */
+.term{background:var(--term);border-radius:16px;border:1px solid color-mix(in srgb,var(--term) 60%,var(--line));box-shadow:0 30px 60px -30px rgba(0,0,0,.45);overflow:hidden;min-width:0}
+.term-top{display:flex;align-items:center;gap:8px;padding:12px 14px;border-bottom:1px solid rgba(255,255,255,.07)}
+.term-top i{width:11px;height:11px;border-radius:50%;background:#3a4246}
+.term-top i:nth-child(1){background:#E0625A}.term-top i:nth-child(2){background:#E0A100}.term-top i:nth-child(3){background:#2FA674}
+.term-top span{margin-left:8px;font:12px var(--mono);color:var(--term-dim)}
+.term-body{padding:18px 18px 8px;font:13.5px/1.75 var(--mono);color:var(--term-ink);min-height:300px;white-space:pre-wrap;word-break:break-word}
+.term-body .p{color:#E9C46A}.term-body .d{color:var(--term-dim)}.term-body .h{color:#45C08D;font-weight:500}.term-body .m{color:#F0875A;font-weight:500}.term-body .b{color:#B48CE6}
+.term-body .cur{display:inline-block;width:8px;height:15px;background:var(--term-ink);vertical-align:-2px;animation:blink 1s steps(1) infinite}
+@keyframes blink{50%{opacity:0}}
+.term-foot{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:12px 14px 14px;border-top:1px solid rgba(255,255,255,.07);flex-wrap:wrap}
+.term-foot small{font:12px var(--mono);color:var(--term-dim)}
+.term-foot button{font:600 13px var(--body);background:#E0A100;color:#1d1400;border:0;border-radius:8px;padding:9px 14px}
+.term-foot button:disabled{opacity:.6;cursor:default}
 
-.grid{display:grid;grid-template-columns:minmax(0,1.35fr) minmax(0,1fr);gap:18px;align-items:start}
-.card{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:18px;min-width:0}
-.label{font:500 11.5px var(--mono);letter-spacing:.1em;text-transform:uppercase;color:var(--muted)}
-.row{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap}
+/* live strip */
+.live{border-top:1px solid var(--line);border-bottom:1px solid var(--line);background:var(--panel)}
+.live .wrap{display:grid;grid-template-columns:auto repeat(5,1fr) 1.4fr;align-items:center;gap:0}
+.live .cell{padding:20px 18px;border-left:1px solid var(--line);min-width:0}
+.live .cell:first-child{border-left:0;padding-left:0}
+.live b{display:block;font:800 25px/1.1 var(--display);letter-spacing:-.02em;font-variant-numeric:tabular-nums;white-space:nowrap}
+.live small{font-size:12.5px;color:var(--muted)}
+.live .lead{display:grid;gap:6px;padding-right:22px}
+.spark{display:flex;align-items:flex-end;gap:2px;height:40px;overflow:hidden}
+.spark i{flex:0 0 5px;border-radius:2px 2px 0 0;background:var(--line)}
+@media (max-width:1100px){.live .wrap{grid-template-columns:repeat(3,1fr)}.live .lead{grid-column:1/-1;padding:18px 0 4px}.live .cell{border-left:0;border-top:1px solid var(--line);padding-left:0}.live .spark-cell{grid-column:1/-1}}
 
-/* conversation */
-.convo{display:flex;flex-direction:column;height:calc(100vh - 110px);min-height:620px;padding:0;overflow:hidden}
-.convo-head{padding:16px 18px 12px;border-bottom:1px solid var(--line)}
-.convo-head h1{font:800 26px/1.1 var(--display);letter-spacing:-.02em;margin:0 0 4px}
-.convo-head p{margin:0;color:var(--muted);font-size:14px}
-.pipe{display:grid;grid-template-columns:repeat(6,1fr);gap:6px;margin-top:14px}
-.stg{border:1px solid var(--line);border-radius:8px;padding:8px 9px;background:var(--bg);transition:background .25s,border-color .25s,opacity .25s;min-width:0}
-.stg b{display:block;font:600 12.5px var(--body);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.stg span{display:block;font:11px var(--mono);color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.stg.run{border-color:var(--accent);background:var(--accent-soft)}
+/* problem */
+.probs{display:grid;grid-template-columns:repeat(4,1fr);gap:16px}
+.prob{border-top:2px solid var(--ink);padding-top:18px;display:grid;gap:8px;align-content:start}
+.prob .k{font:500 11.5px var(--mono);color:var(--miss-ink);letter-spacing:.1em;text-transform:uppercase}
+.prob h3{font-size:21px}
+.prob p{color:var(--muted);font-size:15px}
+.quote{margin-top:44px;display:grid;grid-template-columns:repeat(3,1fr);gap:12px}
+.q{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:14px 16px;font-size:15px;display:flex;justify-content:space-between;gap:12px;align-items:center}
+.q span{font:12px var(--mono);color:var(--miss-ink);white-space:nowrap}
+.qsum{grid-column:1/-1;text-align:center;font:600 15px var(--body);color:var(--muted);padding-top:6px}
+@media (max-width:900px){.probs{grid-template-columns:1fr 1fr}.quote{grid-template-columns:1fr}}
+@media (max-width:540px){.probs{grid-template-columns:1fr}}
+
+/* pipeline */
+.scen{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:18px}
+.scen button{border:1px solid var(--line);background:var(--panel);border-radius:999px;padding:8px 14px;font-size:14px;display:inline-flex;gap:8px;align-items:center}
+.scen button i{width:8px;height:8px;border-radius:50%}
+.scen button[aria-pressed="true"]{border-color:var(--ink);background:var(--ink);color:var(--bg)}
+.pipe{display:grid;grid-template-columns:repeat(8,1fr);gap:0;position:relative}
+.stg{position:relative;text-align:left;border:1px solid var(--line);background:var(--panel);padding:14px 12px 12px;min-width:0;border-radius:0;margin-left:-1px;transition:background .3s,border-color .3s,opacity .3s}
+.stg:first-child{border-radius:12px 0 0 12px;margin-left:0}.stg:last-child{border-radius:0 12px 12px 0}
+.stg .n{font:500 11px var(--mono);color:var(--faint)}
+.stg b{display:block;font:600 14.5px var(--body);margin:4px 0 2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.stg span{display:block;font:12px var(--mono);color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-height:18px}
+.stg.on{z-index:1}
 .stg.ok{border-color:var(--ink)}
-.stg.hit{border-color:var(--hit);background:var(--hit-soft)}
-.stg.miss{border-color:var(--miss);background:var(--miss-soft)}
-.stg.deny{border-color:var(--deny);background:var(--deny-soft)}
-.stg.skip{opacity:.4}
-.thread{flex:1;overflow:auto;padding:18px;display:flex;flex-direction:column;gap:14px}
-.empty{margin:auto;text-align:center;color:var(--muted);max-width:420px}
-.empty h2{font:700 20px var(--display);color:var(--ink);margin:0 0 6px}
-.msg{max-width:86%;display:flex;flex-direction:column;gap:6px}
-.msg.user{align-self:flex-end;align-items:flex-end}
-.bubble{padding:10px 14px;border-radius:14px;white-space:pre-wrap;word-break:break-word}
-.user .bubble{background:var(--ink);color:var(--bg);border-bottom-right-radius:4px}
-.bot .bubble{background:var(--bg);border:1px solid var(--line);border-bottom-left-radius:4px}
-.bot.hit .bubble{border-color:var(--hit)}
-.bot.err .bubble{border-color:var(--deny);color:var(--deny)}
-.meta{display:flex;gap:8px;align-items:center;flex-wrap:wrap;font:12px var(--mono);color:var(--muted)}
-.tag{font:600 10.5px var(--mono);letter-spacing:.07em;padding:2px 7px;border-radius:4px;color:var(--panel);background:var(--muted)}
-.tag.HIT{background:var(--hit)}.tag.MISS{background:var(--miss)}.tag.BYPASS{background:var(--muted)}.tag.ERR,.tag.LIMIT{background:var(--deny)}
-.flag{border:1px solid var(--line);background:transparent;border-radius:6px;padding:2px 8px;font-size:12px}
-.flag:hover{border-color:var(--ink)}
-.composer{border-top:1px solid var(--line);padding:14px 18px 16px;display:grid;gap:10px}
-.chips{display:flex;gap:7px;flex-wrap:wrap}
-.chip{border:1px solid var(--line);background:transparent;border-radius:999px;padding:5px 11px;font-size:13px}
-.chip:hover{border-color:var(--ink)}
-.chip small{font:11px var(--mono);color:var(--muted);margin-left:4px}
-form{display:flex;gap:8px}
-#q{flex:1;min-width:0;font:inherit;color:inherit;background:var(--bg);border:1px solid var(--line);border-radius:10px;padding:12px 14px}
-#q:focus{outline:none;border-color:var(--ink)}
-.send{border:1px solid var(--ink);background:var(--ink);color:var(--bg);border-radius:10px;padding:0 20px;font-weight:600}
-.send:disabled{opacity:.5;cursor:default}
-.opts{display:flex;gap:16px;flex-wrap:wrap;font-size:13px;color:var(--muted);align-items:center}
-.opts label{display:inline-flex;gap:6px;align-items:center;cursor:pointer}
-.opts input[type=checkbox]{accent-color:var(--accent)}
-.err{color:var(--miss);font-size:13px;min-height:0}
+.stg.hit{background:var(--hit-soft);border-color:var(--hit)}
+.stg.miss{background:var(--miss-soft);border-color:var(--miss)}
+.stg.wait{background:var(--accent-soft);border-color:var(--accent)}
+.stg.deny{background:var(--deny-soft);border-color:var(--deny)}
+.stg.skip{opacity:.35}
+.stg.sel{box-shadow:inset 0 -3px 0 var(--accent)}
+.pipeout{display:grid;grid-template-columns:1fr 1.3fr;gap:16px;margin-top:16px}
+.result{display:flex;gap:14px;align-items:center}
+.result b{font:800 34px/1 var(--display);letter-spacing:-.02em;font-variant-numeric:tabular-nums;white-space:nowrap}
+.result p{font-size:15px;color:var(--muted)}
+.detail h3{font-size:20px;margin-bottom:6px}
+.detail p{color:var(--ink-2);font-size:15px}
+.detail .meta{display:flex;gap:16px;flex-wrap:wrap;margin-top:12px;font:12.5px var(--mono);color:var(--muted)}
+.detail .meta b{color:var(--ink);font-weight:500}
+@media (max-width:1000px){.pipe{grid-template-columns:repeat(4,1fr)}.stg,.stg:first-child,.stg:last-child{border-radius:0;margin:0 0 -1px -1px}.pipeout{grid-template-columns:1fr}}
+@media (max-width:520px){.pipe{grid-template-columns:repeat(2,1fr)}}
 
-/* instruments */
-.side{display:grid;gap:18px}
-.kpis{display:grid;grid-template-columns:repeat(2,1fr);gap:1px;background:var(--line);border-radius:14px;overflow:hidden;border:1px solid var(--line)}
-.kpis div{background:var(--panel);padding:16px}
-.kpis b{display:block;font:800 30px/1.1 var(--display);font-variant-numeric:tabular-nums;letter-spacing:-.02em}
-.kpis small{font-size:13px;color:var(--muted)}
-.kpis b.hitc{color:var(--hit)}
-canvas{display:block;width:100%}
-.legend{display:flex;gap:14px;flex-wrap:wrap;font:11.5px var(--mono);color:var(--muted);margin-top:8px}
-.legend span{display:inline-flex;gap:6px;align-items:center}
-.dot{width:9px;height:9px;border-radius:50%;display:inline-block}
-.meter{position:relative;height:16px;border-radius:6px;background:linear-gradient(90deg,var(--miss-soft),var(--accent-soft) 70%,var(--hit-soft));margin:16px 0 6px;border:1px solid var(--line)}
-.meter .th{position:absolute;top:-6px;bottom:-6px;width:2px;background:var(--ink)}
-.meter .th::after{content:attr(data-v);position:absolute;top:-18px;left:50%;transform:translateX(-50%);font:11px var(--mono);color:var(--ink);white-space:nowrap}
-.meter .needle{position:absolute;top:50%;width:16px;height:16px;border-radius:50%;background:var(--panel);border:3px solid var(--muted);transform:translate(-50%,-50%);transition:left .5s cubic-bezier(.2,.8,.2,1),border-color .3s}
-.meter-scale{display:flex;justify-content:space-between;font:11px var(--mono);color:var(--muted)}
-.simtext{font-size:14px;margin-top:8px}
-.bucket{display:flex;gap:3px;margin-top:10px}
-.bucket i{flex:1;height:12px;border-radius:2px;background:var(--line);transition:background .2s}
-.bucket i.on{background:var(--accent)}
-.mini{border:1px solid var(--line);background:transparent;border-radius:7px;padding:5px 10px;font-size:13px}
-.mini:hover{border-color:var(--ink)}
-.provs{display:grid;gap:8px;margin-top:10px}
-.prov{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:9px 11px;border-radius:9px;background:var(--bg);border:1px solid var(--line)}
-.prov .n{display:flex;align-items:center;gap:9px;font-weight:500}
-.prov .s{font:11.5px var(--mono);color:var(--muted)}
-.prov.healthy .dot{background:var(--hit)}.prov.open .dot{background:var(--accent)}.prov.disabled .dot{background:var(--miss)}
-.prov.disabled .n{text-decoration:line-through;color:var(--muted)}
-.entries{display:grid;gap:6px;margin-top:10px;max-height:240px;overflow:auto}
-.entry{display:grid;grid-template-columns:1fr auto;gap:10px;font-size:13.5px;padding:7px 10px;border-radius:7px;background:var(--bg)}
-.entry span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.entry b{font:500 12px var(--mono);color:var(--hit)}
-.note{font-size:12.5px;color:var(--muted);margin-top:8px}
-.adminkey{display:flex;gap:8px;margin-top:10px}
-.adminkey input{flex:1;min-width:0;font:13px var(--mono);color:inherit;background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:7px 10px}
-@media (max-width:1000px){.grid{grid-template-columns:1fr}.convo{height:auto;min-height:0}.thread{max-height:60vh;min-height:280px}}
-@media (max-width:560px){.pipe{grid-template-columns:repeat(3,1fr)}.kpis b{font-size:24px}.msg{max-width:96%}}
-@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+/* features */
+.feats{display:grid;grid-template-columns:repeat(3,1fr);gap:1px;background:var(--line);border:1px solid var(--line);border-radius:var(--radius);overflow:hidden}
+.feat{background:var(--panel);padding:26px 24px;display:grid;gap:10px;align-content:start}
+.feat svg{width:28px;height:28px;color:var(--accent)}
+.feat h3{font-size:19px}
+.feat p{color:var(--muted);font-size:15px}
+.feat code{font-size:12px;color:var(--faint)}
+@media (max-width:900px){.feats{grid-template-columns:1fr 1fr}}
+@media (max-width:560px){.feats{grid-template-columns:1fr}}
+
+/* benchmarks */
+.bench{display:grid;grid-template-columns:1.6fr 1fr;gap:18px}
+.chartbox{position:relative}
+.chartbox svg{display:block;width:100%;height:auto;overflow:visible}
+.chartbox text{font:11.5px var(--mono);fill:var(--muted)}
+.legend{display:flex;gap:18px;flex-wrap:wrap;font-size:13px;color:var(--muted);margin:6px 0 4px}
+.legend span{display:inline-flex;align-items:center;gap:7px}
+.legend i{width:16px;height:3px;border-radius:2px}
+.tip{position:absolute;pointer-events:none;background:var(--raised);border:1px solid var(--line);border-radius:10px;padding:10px 12px;font-size:13px;box-shadow:0 10px 30px -12px rgba(0,0,0,.35);opacity:0;transition:opacity .12s;min-width:170px;z-index:3}
+.tip.on{opacity:1}
+.tip b{font:600 13px var(--mono)}
+.tip .r{display:flex;justify-content:space-between;gap:16px;margin-top:4px}
+.tip .r span:first-child{display:inline-flex;align-items:center;gap:6px;color:var(--muted)}
+.tip .r i{width:8px;height:8px;border-radius:50%}
+.readout{display:grid;grid-template-columns:repeat(3,1fr);gap:1px;background:var(--line);border-radius:10px;overflow:hidden;margin-top:14px}
+.readout div{background:var(--panel);padding:12px 14px}
+.readout b{display:block;font:800 22px var(--display);font-variant-numeric:tabular-nums}
+.readout small{font-size:12.5px;color:var(--muted)}
+.side{display:grid;gap:18px;align-content:start}
+.bars{display:grid;gap:14px;margin-top:14px}
+.bar .row{font-size:14px;margin-bottom:6px}
+.bar .row b{font:600 14px var(--mono);font-variant-numeric:tabular-nums}
+.track{height:14px;background:var(--sunk);border-radius:4px;overflow:hidden}
+.track i{display:block;height:100%;border-radius:0 4px 4px 0;transition:width 1s cubic-bezier(.2,.8,.2,1)}
+.tiles{display:grid;grid-template-columns:repeat(3,1fr);gap:18px;margin-top:18px}
+.tile b{display:block;font:800 32px/1.05 var(--display);letter-spacing:-.02em;font-variant-numeric:tabular-nums}
+.tile p{font-size:14px;color:var(--muted);margin-top:6px}
+.tile code{font-size:12px;color:var(--faint)}
+@media (max-width:1000px){.bench{grid-template-columns:1fr}.tiles{grid-template-columns:1fr}}
+
+/* code tabs */
+.tabs{display:flex;gap:4px;border-bottom:1px solid var(--line);margin-bottom:-1px;overflow-x:auto}
+.tabs button{border:1px solid transparent;border-bottom:0;background:transparent;padding:10px 16px;font:500 14px var(--body);color:var(--muted);border-radius:10px 10px 0 0;white-space:nowrap}
+.tabs button[aria-selected="true"]{background:var(--term);color:var(--term-ink);border-color:color-mix(in srgb,var(--term) 60%,var(--line))}
+.integ{display:grid;grid-template-columns:1.5fr 1fr;gap:24px;align-items:start}
+.integ .code{border-top-left-radius:0}
+.hdrs{display:grid;gap:10px}
+.hdr{display:grid;grid-template-columns:auto 1fr;gap:4px 12px;padding:12px 14px;background:var(--panel);border:1px solid var(--line);border-radius:10px}
+.hdr code{font-size:13px;font-weight:500}
+.hdr span{font-size:14px;color:var(--muted);grid-column:1/-1}
+@media (max-width:1000px){.integ{grid-template-columns:1fr}}
+
+/* compare */
+.cmp td:not(:first-child),.cmp th:not(:first-child){text-align:center}
+.cmp td:first-child{font-weight:500}
+.cmp .y{color:var(--hit-ink);font-weight:600}.cmp .n{color:var(--miss-ink)}.cmp .p{color:var(--muted)}
+.cmp th:last-child,.cmp td:last-child{background:color-mix(in srgb,var(--accent) 9%,transparent)}
+
+/* deploy */
+.deploy{display:grid;grid-template-columns:repeat(4,1fr);gap:16px}
+.dep{display:grid;grid-template-columns:minmax(0,1fr);gap:10px;align-content:start}
+.dep h3{font-size:19px}
+.dep p{font-size:14.5px;color:var(--muted)}
+.dep .inline-cmd{font-size:12px}
+@media (max-width:1000px){.deploy{grid-template-columns:1fr 1fr}}
+@media (max-width:560px){.deploy{grid-template-columns:1fr}}
+
+/* decisions + faq */
+.acc{border-top:1px solid var(--line)}
+.acc details{border-bottom:1px solid var(--line)}
+.acc summary{list-style:none;cursor:pointer;display:grid;grid-template-columns:1fr auto;gap:16px;align-items:center;padding:20px 2px;font:600 18px var(--display)}
+.acc summary::-webkit-details-marker{display:none}
+.acc summary::after{content:"+";font:400 24px var(--body);color:var(--muted);transition:transform .2s}
+.acc details[open] summary::after{transform:rotate(45deg)}
+.acc .body{display:grid;grid-template-columns:1fr 1fr;gap:20px 32px;padding:0 2px 22px;font-size:15.5px}
+.acc .body .k{font:500 11px var(--mono);letter-spacing:.1em;text-transform:uppercase;color:var(--muted);display:block;margin-bottom:4px}
+.acc .body p{color:var(--ink-2)}
+.acc .one{grid-template-columns:1fr;max-width:72ch}
+.two{display:grid;grid-template-columns:1fr 1fr;gap:clamp(28px,5vw,64px)}
+@media (max-width:860px){.acc .body,.two{grid-template-columns:1fr}}
+
+/* roadmap */
+.road{display:grid;grid-template-columns:repeat(3,1fr);gap:16px}
+.rd{border-left:2px solid var(--line-2);padding:4px 0 4px 16px}
+.rd.done{border-color:var(--hit)}
+.rd .label{display:block;margin-bottom:6px}
+.rd h3{font-size:17px}
+.rd p{font-size:14.5px;color:var(--muted);margin-top:4px}
+@media (max-width:860px){.road{grid-template-columns:1fr}}
+
+/* author */
+.author{display:grid;grid-template-columns:auto 1fr auto;gap:26px;align-items:center;background:var(--ink);color:var(--bg);border-radius:20px;padding:clamp(24px,4vw,40px)}
+.author .av{width:84px;height:84px;border-radius:20px;background:var(--accent);color:#1d1400;display:grid;place-items:center;font:800 32px var(--display)}
+.author h2{font-size:clamp(26px,3.4vw,36px)}
+.author p{color:color-mix(in srgb,var(--bg) 70%,transparent);margin-top:8px;max-width:58ch}
+.author .acts{display:flex;gap:10px;flex-wrap:wrap}
+.author .btn{background:var(--bg);color:var(--ink);border-color:var(--bg)}
+.author .btn.ghost{background:transparent;color:var(--bg);border-color:color-mix(in srgb,var(--bg) 35%,transparent)}
+.author .mail{margin-top:14px;font:13.5px var(--mono);color:color-mix(in srgb,var(--bg) 75%,transparent);display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.author .mail button{font:500 12px var(--mono);background:transparent;border:1px solid color-mix(in srgb,var(--bg) 35%,transparent);color:var(--bg);border-radius:7px;padding:4px 9px}
+@media (max-width:860px){.author{grid-template-columns:1fr}}
+.reveal{animation:rise .7s cubic-bezier(.2,.8,.2,1) both}
+@keyframes rise{from{opacity:.001;transform:translateY(12px)}to{opacity:1;transform:none}}
 </style>
+<script src="/site.js"></script>
 </head>
 <body>
-<div class="wrap">
-  <header class="top">
-    <div class="brand"><i aria-hidden="true"></i>Sieve<small>console</small></div>
-    <div class="status">
-      <span class="pill" id="health"><i></i><span>Connecting</span></span>
-      <span class="pill" id="embedder"><i></i><span>embedder</span></span>
-      <nav class="toplinks"><a href="/metrics" target="_blank">Metrics</a><a href="https://github.com/Prm01/sieve" target="_blank" rel="noopener">GitHub</a></nav>
+<nav class="nav" aria-label="Main">
+  <div class="wrap">
+    <a class="brand" href="/"><span class="mark" aria-hidden="true"></span>Sieve</a>
+    <div class="links" id="links">
+      <a href="#how">How it works</a>
+      <a href="#benchmarks">Benchmarks</a>
+      <a href="#use">Use it</a>
+      <a href="#deploy">Deploy</a>
+      <a href="/docs">Docs</a>
+      <a href="/console">Console</a>
     </div>
-  </header>
+    <div class="navr">
+      <a class="btn sm ghost hide-sm" href="https://github.com/Prm01/sieve" target="_blank" rel="noopener"><svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 .5a11.5 11.5 0 0 0-3.6 22.4c.6.1.8-.3.8-.6v-2c-3.2.7-3.9-1.5-3.9-1.5-.5-1.3-1.3-1.7-1.3-1.7-1-.7.1-.7.1-.7 1.2.1 1.8 1.2 1.8 1.2 1 1.8 2.8 1.3 3.5 1 .1-.8.4-1.3.7-1.6-2.6-.3-5.3-1.3-5.3-5.7 0-1.3.5-2.3 1.2-3.1-.1-.3-.5-1.5.1-3.1 0 0 1-.3 3.2 1.2a11 11 0 0 1 5.8 0c2.2-1.5 3.2-1.2 3.2-1.2.6 1.6.2 2.8.1 3.1.8.8 1.2 1.9 1.2 3.1 0 4.4-2.7 5.4-5.3 5.7.4.4.8 1.1.8 2.2v3.3c0 .3.2.7.8.6A11.5 11.5 0 0 0 12 .5z"/></svg>GitHub</a>
+      <button class="iconbtn" id="theme" type="button" aria-label="Switch theme"></button>
+      <button class="iconbtn menu" id="menu" type="button" aria-label="Menu" aria-expanded="false" aria-controls="links"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M4 7h16M4 12h16M4 17h16"/></svg></button>
+    </div>
+  </div>
+</nav>
 
-  <div class="grid">
-    <section class="card convo">
-      <div class="convo-head">
-        <h1>Ask once. Answer forever.</h1>
-        <p>Every message goes through this gateway. Ask a question, then ask it again in different words and watch it skip the model.</p>
-        <div class="pipe" id="pipe"></div>
+<header class="hero">
+  <div class="wrap">
+    <div class="reveal">
+      <span class="eyebrow">Open-source LLM gateway &middot; Go &middot; MIT</span>
+      <h1>Stop paying twice for the <span class="hl">same question.</span></h1>
+      <p class="lede">Sieve sits between your app and your AI models. It answers questions it has already answered in under a millisecond, falls back when a provider goes down, and keeps one user from running up your bill.</p>
+      <div class="cta">
+        <a class="btn amber" href="/console">Open the live console <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg></a>
+        <a class="btn ghost" href="/docs">Read the docs</a>
       </div>
-      <div class="thread" id="thread" aria-live="polite">
-        <div class="empty" id="empty"><h2>No requests yet</h2><p>Try "How do I reset my password?" and then "Password bhool gaya, kya karu" to see a cache hit in under a millisecond.</p></div>
+      <div class="inline-cmd" aria-label="Run with Docker">
+        <span class="prompt">$</span><code id="cmd-docker">docker run -p 8080:8080 ghcr.io/prm01/sieve:latest</code>
+        <button type="button" data-copy="#cmd-docker" data-copy-label="Command copied">Copy</button>
       </div>
-      <div class="composer">
-        <div class="chips" id="chips"></div>
-        <form id="f">
-          <label for="q" style="position:absolute;left:-9999px">Message</label>
-          <input id="q" autocomplete="off" maxlength="4000" placeholder="Ask anything...">
-          <button class="send" id="send">Send</button>
-        </form>
-        <div class="err" id="err" role="alert"></div>
-        <div class="opts">
-          <label><input type="checkbox" id="stream" checked> Stream response</label>
-          <label><input type="checkbox" id="nocache"> Skip cache</label>
-          <button type="button" class="mini" id="clear">Clear chat</button>
-        </div>
+      <div class="proof" aria-label="Benchmark results">
+        <div><b>70.5%</b><span>answered from cache</span></div>
+        <div><b>0</b><span>wrong answers</span></div>
+        <div><b>0.30 ms</b><span>per cache hit</span></div>
+        <div><b>0</b><span>dependencies</span></div>
       </div>
-    </section>
+    </div>
+    <div class="term reveal" style="animation-delay:.12s">
+      <div class="term-top"><i></i><i></i><i></i><span id="term-title">recorded run</span></div>
+      <div class="term-body" id="term" aria-live="polite"></div>
+      <div class="term-foot"><small id="term-note">Two questions, one model call.</small><button type="button" id="runlive">Run it on this server</button></div>
+    </div>
+  </div>
+</header>
 
-    <aside class="side">
-      <div class="kpis">
-        <div><b class="hitc" id="k-hit">0%</b><small>served from cache</small></div>
-        <div><b id="k-req">0</b><small>requests this session</small></div>
-        <div><b id="k-mh">-</b><small>median cache hit</small></div>
-        <div><b id="k-mm">-</b><small>median model call</small></div>
-      </div>
-
-      <div class="card">
-        <div class="row"><span class="label">Latency per request</span><span class="note" style="margin:0">log scale</span></div>
-        <canvas id="chart" height="150" aria-label="Latency of each request in this session"></canvas>
-        <div class="legend"><span><i class="dot" style="background:var(--hit)"></i>Cache hit</span><span><i class="dot" style="background:var(--miss)"></i>Model call</span><span><i class="dot" style="background:var(--muted)"></i>Bypass</span><span><i class="dot" style="background:var(--deny)"></i>Rejected</span></div>
-      </div>
-
-      <div class="card">
-        <span class="label">Last match</span>
-        <div class="meter" id="meter"><div class="th" id="th" data-v="0.85"></div><div class="needle" id="needle" style="left:0"></div></div>
-        <div class="meter-scale"><span>0.0</span><span>0.5</span><span>1.0</span></div>
-        <p class="simtext" id="simtext">Send a message to see how close it was to the nearest cached question.</p>
-      </div>
-
-      <div class="card">
-        <div class="row"><span class="label">Rate limit</span><button type="button" class="mini" id="burst">Send 25 at once</button></div>
-        <div class="bucket" id="bucket"></div>
-        <p class="note" id="bucketnote">Tokens left in your bucket. Each request spends one.</p>
-      </div>
-
-      <div class="card">
-        <div class="row"><span class="label">Model providers</span><button type="button" class="mini" id="refresh">Refresh</button></div>
-        <div class="provs" id="provs"><p class="note">Loading...</p></div>
-        <p class="note">Take a provider offline to watch the router fall back to the next one.</p>
-        <div class="adminkey" id="adminbox" hidden><input id="key" type="password" placeholder="Admin or API key" autocomplete="off" aria-label="Key"><button type="button" class="mini" id="savekey">Use key</button></div>
-      </div>
-
-      <div class="card">
-        <div class="row"><span class="label">Shared cache</span><span class="note" style="margin:0" id="count"></span></div>
-        <div class="entries" id="entries"><p class="note">Loading...</p></div>
-      </div>
-    </aside>
+<div class="live" aria-label="Live statistics from this server">
+  <div class="wrap">
+    <div class="lead"><span class="pill" id="live-pill"><i></i><span>Connecting</span></span><small id="live-note">Live from this server</small></div>
+    <div class="cell"><b id="l-req">–</b><small>requests served</small></div>
+    <div class="cell"><b id="l-hit" style="color:var(--hit-ink)">–</b><small>from cache</small></div>
+    <div class="cell"><b id="l-mh">–</b><small>median cache hit</small></div>
+    <div class="cell"><b id="l-mm">–</b><small>median model call</small></div>
+    <div class="cell"><b id="l-ent">–</b><small>cached answers</small></div>
+    <div class="cell spark-cell"><div class="spark" id="spark" aria-hidden="true"></div><small id="spark-note">last requests, height = latency</small></div>
   </div>
 </div>
+
+<section class="s" id="problem">
+  <div class="wrap">
+    <div class="shead">
+      <span class="eyebrow">The problem</span>
+      <h2>Every app is adding AI. Few are ready for the bill.</h2>
+      <p>Support bots, copilots and search boxes all call the same few model APIs directly. That causes four problems, and each one grows with every new user.</p>
+    </div>
+    <div class="probs">
+      <div class="prob"><span class="k">Cost</span><h3>The same answer, paid for again</h3><p>Most traffic to a support bot is a handful of questions asked in many ways. Each wording is a separate paid call.</p></div>
+      <div class="prob"><span class="k">Latency</span><h3>Seconds per reply</h3><p>A model takes one to several seconds. Users wait for answers the system has already given someone else.</p></div>
+      <div class="prob"><span class="k">Reliability</span><h3>One outage, every feature down</h3><p>When the one provider you call is slow or down, everything built on it fails with it.</p></div>
+      <div class="prob"><span class="k">Control</span><h3>No limits, no visibility</h3><p>One script can send thousands of requests, and nobody sees the spend until the invoice arrives.</p></div>
+    </div>
+    <div class="quote" aria-label="Three wordings of one question">
+      <div class="q">"How do I reset my password?" <span>call 1 &middot; paid</span></div>
+      <div class="q">"I forgot my password" <span>call 2 &middot; paid</span></div>
+      <div class="q">"Password bhool gaya, kya karu" <span>call 3 &middot; paid</span></div>
+      <div class="qsum">One question. Three model calls. With Sieve: one call, then two answers in under a millisecond.</div>
+    </div>
+  </div>
+</section>
+
+<section class="s" id="how">
+  <div class="wrap">
+    <div class="shead">
+      <span class="eyebrow">How it works</span>
+      <h2>Eight checks, in under a millisecond.</h2>
+      <p>Every request takes the same path. Pick a situation to watch what each stage does, or click a stage to see how it works and where it lives in the code.</p>
+    </div>
+    <div class="scen" role="group" aria-label="Situations" id="scen"></div>
+    <div class="pipe" id="pipe"></div>
+    <div class="pipeout">
+      <div class="card result" id="result"></div>
+      <div class="card detail" id="detail"></div>
+    </div>
+  </div>
+</section>
+
+<section class="s" id="features">
+  <div class="wrap">
+    <div class="shead">
+      <span class="eyebrow">What's inside</span>
+      <h2>Everything a production gateway needs. One binary.</h2>
+      <p>No database to install, no framework, no third-party Go modules. Each part is small enough to read in one sitting.</p>
+    </div>
+    <div class="feats" id="feats"></div>
+  </div>
+</section>
+
+<section class="s" id="benchmarks">
+  <div class="wrap">
+    <div class="shead">
+      <span class="eyebrow">Benchmarks</span>
+      <h2>Measured, not claimed.</h2>
+      <p>Every number here comes from a command in the repository. The hardest decision was the similarity threshold: set it low and the cache looks great while it quietly gives some users the wrong answer.</p>
+    </div>
+    <div class="bench">
+      <div class="card">
+        <div class="row"><span class="label">Cache quality by similarity threshold &middot; 2,000 requests</span><span class="small muted">hover to compare</span></div>
+        <div class="legend"><span><i style="background:var(--hit)"></i>Answered from cache</span><span><i style="background:repeating-linear-gradient(90deg,var(--miss) 0 5px,transparent 5px 8px)"></i>Wrong answers served</span></div>
+        <div class="chartbox" id="sweepbox"><svg id="sweep" viewBox="0 0 720 300" role="img" aria-label="Line chart: as the threshold rises from 0.50 to 0.95, answers from cache fall from 85.4% to 63.7% and wrong answers fall from 12.8% to 0%"></svg><div class="tip" id="tip"></div></div>
+        <div class="readout" aria-live="polite">
+          <div><b id="r-hit">70.5%</b><small>answered from cache</small></div>
+          <div><b id="r-wrong">0.0%</b><small>wrong answers</small></div>
+          <div><b id="r-th">0.85</b><small>threshold</small></div>
+        </div>
+      </div>
+      <div class="side">
+        <div class="card">
+          <span class="label">Traffic spike on an empty cache</span>
+          <p class="small muted" style="margin-top:6px">400 requests, 200 at the same moment</p>
+          <div class="bars">
+            <div class="bar"><div class="row"><span>Without coalescing</span><b>268 model calls</b></div><div class="track"><i data-w="100" style="width:0;background:var(--miss)"></i></div></div>
+            <div class="bar"><div class="row"><span>With coalescing</span><b>134 model calls</b></div><div class="track"><i data-w="50" style="width:0;background:var(--hit)"></i></div></div>
+          </div>
+          <p class="note" style="margin-top:14px">Similar requests that arrive together share one model call instead of each making their own.</p>
+        </div>
+        <div class="card">
+          <span class="label">Latency, log scale</span>
+          <div class="bars">
+            <div class="bar"><div class="row"><span>Cache hit over HTTP</span><b>0.30 ms</b></div><div class="track"><i data-w="18" style="width:0;background:var(--hit)"></i></div></div>
+            <div class="bar"><div class="row"><span>Model call</span><b>1,090 ms</b></div><div class="track"><i data-w="100" style="width:0;background:var(--miss)"></i></div></div>
+          </div>
+          <p class="note" style="margin-top:14px">A cache hit is about 3,600 times faster than asking the model.</p>
+        </div>
+      </div>
+    </div>
+    <div class="tiles">
+      <div class="card tile"><b>5,058<span style="font-size:.5em"> req/s</span></b><p>through the gateway on 2 vCPUs, load generator included</p><code>sievebench -c 64</code></div>
+      <div class="card tile"><b>0.31 ms</b><p>to search 1,000 cached prompts; 4.2 ms for 10,000</p><code>go test -bench Lookup</code></div>
+      <div class="card tile"><b>&lt; 2 s</b><p>for a new answer to reach every replica through Redis</p><code>internal/cache/redis.go</code></div>
+    </div>
+    <p class="note" style="margin-top:22px">Method: 2,000 replayed requests, made of support questions with typos, filler and Hinglish (66%), developer questions that look alike but differ in meaning (24%), and personal prompts (10%). The model is a mock with 0.8 to 1.4 s latency, so the run is free and repeatable. Reproduce with <code class="i">make sweep</code> and <code class="i">make bench</code>.</p>
+  </div>
+</section>
+
+<section class="s" id="use">
+  <div class="wrap">
+    <div class="shead">
+      <span class="eyebrow">Use it</span>
+      <h2>Change one URL. Keep your code.</h2>
+      <p>Sieve speaks the OpenAI API, so the official SDKs, LangChain and anything else that takes a base URL work unchanged, streaming included.</p>
+    </div>
+    <div class="integ">
+      <div>
+        <div class="tabs" role="tablist" id="tabs"></div>
+        <div class="code"><button class="copy" type="button" id="codecopy">Copy</button><pre id="codepre"></pre></div>
+      </div>
+      <div class="hdrs">
+        <span class="label">Every response tells you what happened</span>
+        <div class="hdr"><code>X-Sieve-Cache</code><span><b>HIT</b>, <b>MISS</b> or <b>BYPASS</b>: whether a model was called.</span></div>
+        <div class="hdr"><code>X-Sieve-Similarity</code><span>How close the nearest cached question was, from 0 to 1.</span></div>
+        <div class="hdr"><code>X-Sieve-Provider</code><span>Which model answered, including after a fallback.</span></div>
+        <div class="hdr"><code>X-Sieve-Coalesced</code><span>Set when the answer came from a request that arrived at the same moment.</span></div>
+        <div class="hdr"><code>X-Sieve-Cache: off</code><span>Send this header to skip the cache for one request.</span></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="s" id="compare">
+  <div class="wrap">
+    <div class="shead">
+      <span class="eyebrow">Why a gateway</span>
+      <h2>What changes when Sieve is in the middle.</h2>
+    </div>
+    <div class="tblwrap">
+      <table class="t cmp">
+        <thead><tr><th>Situation</th><th>Calling the model directly</th><th>Exact-match cache</th><th>Sieve</th></tr></thead>
+        <tbody>
+          <tr><td>Same question, new wording</td><td class="n">Paid again</td><td class="n">Paid again</td><td class="y">Answered from cache</td></tr>
+          <tr><td>Typos, filler words, Hinglish</td><td class="n">Paid again</td><td class="n">Paid again</td><td class="y">Answered from cache</td></tr>
+          <tr><td>200 users ask at once, nothing cached</td><td class="n">200 calls</td><td class="n">Up to 200 calls</td><td class="y">Shared calls</td></tr>
+          <tr><td>Your provider goes down</td><td class="n">Feature fails</td><td class="n">Feature fails</td><td class="y">Next provider answers</td></tr>
+          <tr><td>One user floods the API</td><td class="n">You pay for it</td><td class="n">You pay for it</td><td class="y">HTTP 429 after their limit</td></tr>
+          <tr><td>"Where is my order 4417?"</td><td class="p">Not cached</td><td class="p">Could be cached and shown to others</td><td class="y">Never cached</td></tr>
+          <tr><td>Know your hit rate and latency</td><td class="n">No</td><td class="p">Partly</td><td class="y">Prometheus and Grafana</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</section>
+
+<section class="s" id="deploy">
+  <div class="wrap">
+    <div class="shead">
+      <span class="eyebrow">Deploy</span>
+      <h2>Running in a minute, anywhere.</h2>
+      <p>With no API key, two mock models answer, so you can try caching and fallback before spending anything.</p>
+    </div>
+    <div class="deploy">
+      <div class="card dep"><span class="label">Your computer</span><h3>Download and run</h3><p>Windows, macOS and Linux builds. Extract, run the start script, open localhost:8080.</p><a class="btn sm ghost" href="https://github.com/Prm01/sieve/releases/latest" target="_blank" rel="noopener">Get the latest release</a></div>
+      <div class="card dep"><span class="label">Docker</span><h3>One command</h3><p>A small distroless image that runs as a non-root user.</p><div class="inline-cmd"><code id="d2">docker run -p 8080:8080 ghcr.io/prm01/sieve:latest</code><button type="button" data-copy="#d2">Copy</button></div></div>
+      <div class="card dep"><span class="label">Cloud</span><h3>Render, one click</h3><p>Gateway plus a Redis-compatible store on the free plan, from <code class="i">render.yaml</code>.</p><a class="btn sm ghost" href="https://render.com/deploy?repo=https://github.com/Prm01/sieve" target="_blank" rel="noopener">Deploy to Render</a></div>
+      <div class="card dep"><span class="label">Kubernetes</span><h3>Scale out</h3><p>Three replicas, autoscaling, health probes and a read-only filesystem. Replicas share one cache.</p><div class="inline-cmd"><code id="d4">kubectl apply -f deploy/k8s/sieve.yaml</code><button type="button" data-copy="#d4">Copy</button></div></div>
+    </div>
+  </div>
+</section>
+
+<section class="s" id="decisions">
+  <div class="wrap">
+    <div class="shead">
+      <span class="eyebrow">Engineering decisions</span>
+      <h2>What I chose, and what it cost.</h2>
+      <p>Every part of Sieve is a trade-off. These are the ones that mattered most.</p>
+    </div>
+    <div class="acc" id="acc"></div>
+  </div>
+</section>
+
+<section class="s" id="faq">
+  <div class="wrap two">
+    <div class="shead" style="margin:0"><span class="eyebrow">Questions</span><h2>Frequently asked.</h2><p>Something else? <a href="https://github.com/Prm01/sieve/issues" target="_blank" rel="noopener">Open an issue</a> on GitHub.</p></div>
+    <div class="acc" id="faqs"></div>
+  </div>
+</section>
+
+<section class="s" id="roadmap">
+  <div class="wrap">
+    <div class="shead"><span class="eyebrow">Roadmap</span><h2>Shipped, and what's next.</h2></div>
+    <div class="road">
+      <div class="rd done"><span class="label">Shipped in v0.1</span><h3>Semantic cache and coalescing</h3><p>Threshold, TTL, LRU, pinning, user flags, shared calls for concurrent misses.</p></div>
+      <div class="rd done"><span class="label">Shipped in v0.1</span><h3>Fallback and rate limiting</h3><p>Four provider types, circuit breakers, Redis token bucket shared by every replica.</p></div>
+      <div class="rd done"><span class="label">Shipped in v0.1</span><h3>Observability and console</h3><p>Prometheus metrics, Grafana dashboard, live console, benchmark tool.</p></div>
+      <div class="rd"><span class="label">Next</span><h3>Approximate search</h3><p>An HNSW index so lookups stay fast past 10,000 entries per partition.</p></div>
+      <div class="rd"><span class="label">Next</span><h3>Adaptive thresholds</h3><p>Learn a threshold per kind of question from user feedback.</p></div>
+      <div class="rd"><span class="label">Next</span><h3>Cost-aware routing</h3><p>Send simple prompts to cheaper models and keep large models for hard ones.</p></div>
+    </div>
+  </div>
+</section>
+
+<section class="s" id="author" style="border-top:0;padding-top:0">
+  <div class="wrap">
+    <div class="author">
+      <div class="av" aria-hidden="true">PY</div>
+      <div>
+        <span class="label" style="color:color-mix(in srgb,var(--bg) 60%,transparent)">Built by</span>
+        <h2>Pramod Yadav</h2>
+        <p>Final-year student. I designed, built and benchmarked Sieve to learn how production AI systems handle cost, latency and failure. Open to backend, platform and AI infrastructure roles.</p>
+        <div class="mail"><span id="email">pramodyadav2948@gmail.com</span><button type="button" data-copy="#email" data-copy-label="Email copied">Copy email</button></div>
+      </div>
+      <div class="acts">
+        <a class="btn" href="https://www.linkedin.com/in/pramod-yadav-7810b5299" target="_blank" rel="noopener">LinkedIn</a>
+        <a class="btn ghost" href="https://github.com/Prm01" target="_blank" rel="noopener">GitHub</a>
+      </div>
+    </div>
+  </div>
+</section>
+
+<footer class="f">
+  <div class="wrap">
+    <div><a class="brand" href="/" style="display:inline-flex"><span class="mark" aria-hidden="true"></span>Sieve</a><p style="margin-top:10px;max-width:36ch">Open-source LLM gateway. MIT licence. Version <span data-version>–</span>.</p></div>
+    <div><h4>Product</h4><a href="/console">Live console</a><a href="/docs">Documentation</a><a href="/metrics">Metrics</a></div>
+    <div><h4>Project</h4><a href="https://github.com/Prm01/sieve" target="_blank" rel="noopener">Source code</a><a href="https://github.com/Prm01/sieve/releases" target="_blank" rel="noopener">Releases</a><a href="https://github.com/Prm01/sieve/blob/main/docs/ARCHITECTURE.md" target="_blank" rel="noopener">Design decisions</a></div>
+    <div><h4>Author</h4><a href="https://www.linkedin.com/in/pramod-yadav-7810b5299" target="_blank" rel="noopener">LinkedIn</a><a href="https://github.com/Prm01" target="_blank" rel="noopener">GitHub</a></div>
+  </div>
+</footer>
 
 <script>
 (function(){
 const $=id=>document.getElementById(id);
-const css=n=>getComputedStyle(document.documentElement).getPropertyValue(n).trim();
-const fmt=ms=>ms==null?'-':ms<1?ms.toFixed(2)+' ms':ms<1000?(ms<10?ms.toFixed(1):Math.round(ms))+' ms':(ms/1000).toFixed(2)+' s';
-const med=a=>{if(!a.length)return null;const b=[...a].sort((x,y)=>x-y);return b[Math.floor(b.length/2)]};
-let key='';try{key=sessionStorage.getItem('sieve-key')||''}catch(e){}
-const hdrs=()=>{const h={'Content-Type':'application/json'};if(key)h.Authorization='Bearer '+key;return h};
-let threshold=0.85,bucketMax=20;const log=[];
+const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const reduce=matchMedia('(prefers-reduced-motion: reduce)').matches;
+const sleep=ms=>new Promise(r=>setTimeout(r,reduce?0:ms));
+const fmt=v=>sieve.fmtMs(v);
 
-/* pipeline */
-const ST=[['rate','Rate limit'],['cachecheck','Cacheable?'],['embed','Embed'],['search','Vector search'],['route','Router'],['model','Model']];
-$('pipe').innerHTML=ST.map(([k,n])=>`<div class="stg" id="st-${k}"><b>${n}</b><span>idle</span></div>`).join('');
-const stage=(k,c,t)=>{const e=$('st-'+k);e.className='stg '+(c||'');e.querySelector('span').textContent=t};
-const resetPipe=()=>ST.forEach(([k])=>stage(k,'','waiting'));
-const sleep=ms=>new Promise(r=>setTimeout(r,ms));
+/* ---------- terminal ---------- */
+const term=$('term');let termRun=0;
+async function type(el,line,run){for(const ch of line){if(run!==termRun)return false;el.textContent+=ch;await sleep(18)}return true}
+function newLine(cls){const s=document.createElement('span');if(cls)s.className=cls;term.append(s);return s}
+function cursor(on){term.querySelectorAll('.cur').forEach(c=>c.remove());if(on){const c=document.createElement('span');c.className='cur';term.append(c)}}
+async function replay(){const run=++termRun;$('term-title').textContent='recorded run';$('term-note').textContent='Two questions, one model call.';
+ while(run===termRun){term.textContent='';
+  const steps=[["How do I reset my password?",'MISS','mock-primary · 1,406 ms','Mock answer to: How do I reset my password?'],["Password bhool gaya, kya karu",'HIT','similarity 1.00 · 0.11 ms','Same answer. No model call.']];
+  for(const [q,res,meta,ans] of steps){newLine('p').textContent='$ ';const cmd=newLine();cursor(true);if(!await type(cmd,`ask "${q}"`,run))return;cursor(false);term.append('\n');await sleep(res==='MISS'?900:160);
+   const l=newLine(res==='HIT'?'h':'m');l.textContent='  '+res;newLine('d').textContent='  '+meta+'\n';newLine().textContent='  → '+ans+'\n\n';await sleep(1100)}
+  cursor(true);await sleep(4200)}}
+replay();
+const POOL=['notification','privacy','language','theme','profile','display','sound','keyboard','backup','calendar','reminder','widget'];
+$('runlive').addEventListener('click',async()=>{const b=$('runlive');b.disabled=true;const run=++termRun;term.textContent='';$('term-title').textContent='live · this server';
+ const n=POOL[Math.floor(Math.random()*POOL.length)];
+ const qs=[`How do I change my ${n} settings?`,`pls how to change ${n} settings`];
+ try{for(const q of qs){newLine('p').textContent='$ ';newLine().textContent=`ask "${q}"\n`;
+   const t0=performance.now();const r=await fetch('/v1/chat/completions',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({model:'sieve',messages:[{role:'user',content:q}]})});
+   const ms=performance.now()-t0;const c=r.headers.get('X-Sieve-Cache')||'ERR';const sim=r.headers.get('X-Sieve-Similarity');const prov=r.headers.get('X-Sieve-Provider');const gw=r.headers.get('X-Sieve-Latency-Ms');
+   if(r.status===429){newLine('b').textContent='  429 rate limited · try again in '+(r.headers.get('Retry-After')||'a few')+' s\n\n';break}
+   if(r.status===401){newLine('b').textContent='  401 · this gateway needs an API key. Use the console.\n\n';break}
+   const j=await r.json();if(!r.ok)throw new Error(j.error&&j.error.message||r.statusText);
+   newLine(c==='HIT'?'h':'m').textContent='  '+c;newLine('d').textContent=`  ${c==='HIT'&&sim?'similarity '+(+sim).toFixed(2)+' · ':''}${prov?prov+' · ':''}${fmt(c==='HIT'&&gw?+gw:ms)}\n`;
+   newLine().textContent='  → '+(j.choices[0].message.content||'').slice(0,140)+'\n\n'}
+  $('term-note').textContent='Real requests to this server. Numbers update below.';loadStats();
+ }catch(e){newLine('b').textContent='  error: '+e.message+'\n'}
+ cursor(true);b.disabled=false;b.textContent='Run it again'});
 
-/* chips */
-const CH=[['How do I reset my password?',''],['Password bhool gaya, kya karu','Hinglish'],['What is your refund policy?',''],['whats your refund policy','paraphrase'],['Where is my order #4417?','personal'],['Explain CAP theorem simply','']];
-$('chips').innerHTML=CH.map(([t,s],i)=>`<button type="button" class="chip" data-i="${i}">${t}${s?`<small>${s}</small>`:''}</button>`).join('');
-$('chips').onclick=e=>{const b=e.target.closest('.chip');if(!b)return;$('q').value=CH[+b.dataset.i][0];submit()};
+/* ---------- live stats ---------- */
+async function loadStats(){try{const r=await fetch('/v1/public/stats',{cache:'no-store'});const j=await r.json();
+  const q=j.requests||{};const total=Object.values(q).reduce((a,b)=>a+b,0);
+  $('live-pill').className='pill ok';$('live-pill').lastChild.textContent='Online '+(j.version||'');
+  $('l-req').textContent=total.toLocaleString('en-IN');$('l-hit').textContent=j.hit_rate!=null?Math.round(j.hit_rate*100)+'%':'–';
+  $('l-mh').textContent=fmt(j.median_ms&&j.median_ms.hit);$('l-mm').textContent=fmt(j.median_ms&&j.median_ms.model);$('l-ent').textContent=(j.cache_entries||0).toLocaleString('en-IN');
+  const up=j.uptime_seconds||0;$('live-note').textContent=total?`Live from this server · up ${up<3600?Math.round(up/60)+' min':up<86400?Math.round(up/3600)+' h':Math.round(up/86400)+' d'}`:'No traffic yet. Press "Run it on this server".';
+  const ev=(j.recent||[]).slice(0,48).reverse();const sp=$('spark');sp.innerHTML='';
+  const col={hit:'var(--hit)',coalesced:'var(--hit)',miss:'var(--miss)',bypass:'var(--faint)'};
+  for(const e of ev){const i=document.createElement('i');const h=Math.max(8,Math.min(100,(Math.log10(Math.max(e.ms,0.05))+1.4)/5*100));i.style.height=h+'%';i.style.background=col[e.result]||'var(--deny)';i.title=`${e.result} · ${fmt(e.ms)}`;sp.append(i)}
+  if(!ev.length)for(let k=0;k<48;k++){const i=document.createElement('i');i.style.height='8%';sp.append(i)}
+ }catch(e){$('live-pill').className='pill bad';$('live-pill').lastChild.textContent='Offline'}}
+loadStats();setInterval(loadStats,5000);
 
-/* thread */
-function addUser(t){$('empty')&&$('empty').remove();const d=document.createElement('div');d.className='msg user';d.innerHTML='<div class="bubble"></div>';d.firstChild.textContent=t;$('thread').append(d);scroll()}
-function addBot(){const d=document.createElement('div');d.className='msg bot';d.innerHTML='<div class="bubble">...</div><div class="meta"></div>';$('thread').append(d);scroll();return d}
-const scroll=()=>{const t=$('thread');t.scrollTop=t.scrollHeight};
-$('clear').onclick=()=>{$('thread').innerHTML='<div class="empty" id="empty"><h2>Chat cleared</h2><p>The cache is not cleared, so asking the same things again will hit.</p></div>';resetPipe()};
+/* ---------- pipeline ---------- */
+const ST=[
+ {k:'auth',t:'Auth',d:'Who is asking',h:'Find the tenant',p:'The API key maps to a tenant, and tenants never share cached answers. With no keys configured, the client IP is used and the gateway is open.',f:'internal/server/server.go',c:'< 0.01 ms'},
+ {k:'rate',t:'Rate limit',d:'Token bucket',h:'Spend one token',p:'Each tenant has a bucket that refills over time. An empty bucket returns 429 with Retry-After. With Redis, the update is one Lua script, so replicas can never spend the same token twice.',f:'internal/ratelimit',c:'~1 ms with Redis'},
+ {k:'check',t:'Cacheable?',d:'Privacy and turns',h:'Decide whether to cache',p:'Prompts with personal data (order numbers, emails, phone numbers, OTPs) and multi-turn conversations skip the cache, because their right answer belongs to one user or one conversation.',f:'internal/privacy',c:'< 0.05 ms'},
+ {k:'embed',t:'Embed',d:'Text to vector',h:'Turn the prompt into numbers',p:'The prompt becomes a 512-number unit vector. Prompts with the same meaning point in nearly the same direction, even with typos, filler words or Hinglish.',f:'internal/embed',c:'~0.02 ms built in'},
+ {k:'search',t:'Search',d:'Nearest question',h:'Find the closest cached question',p:'Compare against every live entry in the partition (tenant, model, system prompt). A score of 0.85 or more is a hit. That threshold was picked from a benchmark, not guessed.',f:'internal/cache',c:'0.31 ms / 1,000 entries'},
+ {k:'coal',t:'Coalesce',d:'Already in flight?',h:'Share a call that is already running',p:'If a similar question is being answered right now, wait for that answer instead of calling the model again. If that call fails, each waiting request tries on its own.',f:'internal/server/coalesce.go',c:'0 extra calls'},
+ {k:'route',t:'Route',d:'Pick a provider',h:'Call the first healthy model',p:'Try providers in order. Timeouts, 429 and 5xx fall through to the next one. Three failures in a row open a circuit breaker for 30 s, so a dead provider is skipped, not retried.',f:'internal/router',c:'the model’s own time'},
+ {k:'store',t:'Store',d:'Cache and sync',h:'Save the answer for next time',p:'The answer is stored even if the client disconnected, and reaches every replica through Redis within about 2 seconds.',f:'internal/cache/redis.go',c:'async'},
+];
+const SC={
+ hit:{t:'Cache hit',c:'var(--hit)',big:'0.30 ms',txt:'Answered from cache. No model call, no cost.',s:{auth:['ok','tenant: acme'],rate:['ok','19 tokens left'],check:['ok','cacheable'],embed:['ok','512 dims'],search:['hit','0.97 ≥ 0.85'],coal:['skip','not needed'],route:['skip','skipped'],store:['skip','already cached']}},
+ miss:{t:'New question',c:'var(--miss)',big:'1.09 s',txt:'Nothing similar yet, so a model answers and the result is cached.',s:{auth:['ok','tenant: acme'],rate:['ok','18 tokens left'],check:['ok','cacheable'],embed:['ok','512 dims'],search:['miss','best 0.41'],coal:['ok','first in line'],route:['miss','claude'],store:['ok','saved, synced']}},
+ herd:{t:'Many at once',c:'var(--accent)',big:'1 call',txt:'200 people ask together. One call goes out; everyone else waits for it.',s:{auth:['ok','tenant: acme'],rate:['ok','token spent'],check:['ok','cacheable'],embed:['ok','512 dims'],search:['miss','cache empty'],coal:['wait','joined call #1'],route:['skip','not needed'],store:['skip','leader stores']}},
+ personal:{t:'Personal data',c:'var(--faint)',big:'BYPASS',txt:'"Where is my order 4417?" goes straight to a model and is never cached.',s:{auth:['ok','tenant: acme'],rate:['ok','17 tokens left'],check:['miss','order number'],embed:['skip','skipped'],search:['skip','skipped'],coal:['skip','skipped'],route:['miss','claude'],store:['skip','never stored']}},
+ down:{t:'Provider down',c:'var(--accent)',big:'fallback',txt:'Claude is failing, so its breaker is open and OpenAI answers instead.',s:{auth:['ok','tenant: acme'],rate:['ok','16 tokens left'],check:['ok','cacheable'],embed:['ok','512 dims'],search:['miss','best 0.52'],coal:['ok','first in line'],route:['wait','claude open → openai'],store:['ok','saved, synced']}},
+ limit:{t:'Rate limited',c:'var(--deny)',big:'429',txt:'The bucket is empty. The request stops before costing anything.',s:{auth:['ok','tenant: acme'],rate:['deny','0 tokens'],check:['skip',''],embed:['skip',''],search:['skip',''],coal:['skip',''],route:['skip',''],store:['skip','']}},
+};
+$('pipe').innerHTML=ST.map((s,i)=>`<button type="button" class="stg" id="st-${s.k}" data-i="${i}"><span class="n">0${i+1}</span><b>${s.t}</b><span>${s.d}</span></button>`).join('');
+$('scen').innerHTML=Object.entries(SC).map(([k,v])=>`<button type="button" data-k="${k}" aria-pressed="false"><i style="background:${v.c}"></i>${v.t}</button>`).join('');
+function showDetail(i){const s=ST[i];document.querySelectorAll('.stg').forEach(e=>e.classList.toggle('sel',+e.dataset.i===i));
+ $('detail').innerHTML=`<span class="label">Stage ${i+1} of 8</span><h3 style="margin-top:6px">${s.h}</h3><p>${s.p}</p><div class="meta"><span>Code <b>${s.f}</b></span><span>Cost <b>${s.c}</b></span></div>`}
+let simRun=0;
+async function play(k){const run=++simRun;const sc=SC[k];document.querySelectorAll('#scen button').forEach(b=>b.setAttribute('aria-pressed',b.dataset.k===k));
+ ST.forEach(s=>{const e=$('st-'+s.k);e.className='stg';e.querySelector('span:last-child').textContent=s.d});
+ $('result').innerHTML=`<b style="color:var(--muted)">…</b><p>Running "${sc.t}"</p>`;
+ for(let i=0;i<ST.length;i++){if(run!==simRun)return;const s=ST[i];const [st,txt]=sc.s[s.k];const e=$('st-'+s.k);e.className='stg on '+st;e.querySelector('span:last-child').textContent=txt||'skipped';
+  if(st!=='skip')showDetail(i);await sleep(st==='skip'?90:430)}
+ $('result').innerHTML=`<b style="color:${sc.c}">${sc.big}</b><p>${sc.txt}</p>`}
+$('scen').addEventListener('click',e=>{const b=e.target.closest('button');if(b)play(b.dataset.k)});
+$('pipe').addEventListener('click',e=>{const b=e.target.closest('.stg');if(b)showDetail(+b.dataset.i)});
+showDetail(4);
+const pio=new IntersectionObserver(es=>{if(es.some(x=>x.isIntersecting)){play('hit');pio.disconnect()}},{threshold:.4});pio.observe($('pipe'));
+$('result').innerHTML='<b style="color:var(--hit-ink)">0.30 ms</b><p>Pick a situation above to watch the request move through the gateway.</p>';
 
-/* bucket */
-function drawBucket(rem){if(rem!=null&&rem+1>bucketMax)bucketMax=rem+1;const n=Math.min(bucketMax,40);if($('bucket').children.length!==n)$('bucket').innerHTML='<i></i>'.repeat(n);
- const on=rem==null?n:Math.round(Math.max(0,rem)/bucketMax*n);[...$('bucket').children].forEach((x,i)=>x.classList.toggle('on',i<on));
- if(rem!=null)$('bucketnote').textContent=`${rem} of ${bucketMax} tokens left. Each request spends one; they refill over time.`}
-drawBucket(null);
+/* ---------- features ---------- */
+const ic={
+ cache:'<path d="M4 6c0-1.7 3.6-3 8-3s8 1.3 8 3-3.6 3-8 3-8-1.3-8-3z"/><path d="M4 6v6c0 1.7 3.6 3 8 3s8-1.3 8-3V6"/><path d="M4 12v6c0 1.7 3.6 3 8 3s8-1.3 8-3v-6"/>',
+ merge:'<path d="M4 5c5 0 8 3 8 7M4 19c5 0 8-3 8-7M12 12h8M17 9l3 3-3 3"/>',
+ route:'<circle cx="5" cy="12" r="2"/><circle cx="19" cy="5" r="2"/><circle cx="19" cy="12" r="2"/><circle cx="19" cy="19" r="2"/><path d="M7 12h10M7 11l10-5.5M7 13l10 5.5"/>',
+ bucket:'<path d="M5 8h14l-1.5 11a2 2 0 0 1-2 1.7h-7a2 2 0 0 1-2-1.7z"/><path d="M8 8V6a4 4 0 0 1 8 0v2"/><path d="M9 13h6"/>',
+ shield:'<path d="M12 3l8 3v6c0 4.5-3.4 8-8 9-4.6-1-8-4.5-8-9V6z"/><path d="M9 12l2 2 4-4"/>',
+ users:'<circle cx="9" cy="8" r="3"/><path d="M3 20c0-3.3 2.7-6 6-6s6 2.7 6 6"/><path d="M16 4.5a3 3 0 0 1 0 6M18 14c2 .8 3 2.8 3 6"/>',
+ stream:'<path d="M4 7h10M4 12h16M4 17h7"/><path d="M17 15l3 2-3 2"/>',
+ chart:'<path d="M4 20V4M4 20h16"/><path d="M7 15l4-5 3 3 5-7"/>',
+ cube:'<path d="M12 3l8 4.5v9L12 21l-8-4.5v-9z"/><path d="M12 12l8-4.5M12 12v9M12 12L4 7.5"/>'};
+const FE=[['cache','Semantic cache','Matches by meaning, so rephrased questions, typos and Hinglish still hit. TTL, LRU eviction, pinning and user flags.','internal/cache'],
+['merge','Request coalescing','Similar questions arriving together share one model call. Halves calls during a traffic spike.','server/coalesce.go'],
+['route','Provider fallback','Anthropic, OpenAI, Gemini and any OpenAI-compatible server, such as Ollama or vLLM, with a circuit breaker each.','internal/router'],
+['bucket','Rate limiting','Token bucket per key or IP, atomic in Redis across replicas, and it fails open if Redis goes down.','internal/ratelimit'],
+['shield','Safe by default','Personal data and multi-turn chats skip the cache. A flagged wrong answer is never served again.','internal/privacy'],
+['users','Multi-tenant','Each API key is a tenant. Tenants, models and system prompts never share cache entries.','server.go'],
+['stream','OpenAI-compatible','Chat completions with server-sent-event streaming. Existing SDKs work by changing the base URL.','/v1/chat/completions'],
+['chart','Observability','Prometheus metrics, a Grafana dashboard, structured JSON logs and a similarity histogram for tuning.','/metrics'],
+['cube','Zero dependencies','Standard library only, including the Redis client and metrics exporter. One 6.8 MB static binary.','go.mod']];
+$('feats').innerHTML=FE.map(([i,t,p,c])=>`<div class="feat"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${ic[i]}</svg><h3>${t}</h3><p>${p}</p><code>${c}</code></div>`).join('');
 
-/* request */
-async function send(text,{quiet=false}={}){
- const msgs=[{role:'user',content:text}];const h=hdrs();if($('nocache').checked)h['X-Sieve-Cache']='off';
- const stream=$('stream').checked&&!quiet;const t0=performance.now();
- const r=await fetch('/v1/chat/completions',{method:'POST',headers:h,body:JSON.stringify({model:'sieve',stream,messages:msgs})});
- const H=k=>r.headers.get(k);const info={status:r.status,cache:H('X-Sieve-Cache'),sim:H('X-Sieve-Similarity'),entry:H('X-Sieve-Entry'),prov:H('X-Sieve-Provider'),gw:H('X-Sieve-Latency-Ms'),rem:H('X-RateLimit-Remaining'),retry:H('Retry-After')};
- return {r,info,t0,stream};
-}
-async function readAnswer(r,stream,onText){
- if(!r.ok){const j=await r.json().catch(()=>({}));throw new Error((j.error&&j.error.message)||r.statusText)}
- if(!stream){const j=await r.json();const t=j.choices[0].message.content;onText(t);return {text:t,meta:j.sieve}}
- const rd=r.body.getReader(),dec=new TextDecoder();let buf='',text='',meta=null,first=null;
- for(;;){const{value,done}=await rd.read();if(done)break;buf+=dec.decode(value,{stream:true});let i;
-  while((i=buf.indexOf('\n\n'))>=0){const ev=buf.slice(0,i);buf=buf.slice(i+2);const d=ev.replace(/^data: /,'');if(d==='[DONE]')continue;
-   let j;try{j=JSON.parse(d)}catch(_){continue}
-   if(j.error)throw new Error(j.error.message);const c=j.choices&&j.choices[0];
-   if(c&&c.delta&&c.delta.content){if(first===null)first=performance.now();text+=c.delta.content;onText(text)}
-   if(j.sieve)meta=j.sieve}}
- return {text,meta,first};
-}
+/* ---------- threshold chart ---------- */
+const SW=[[0.50,85.4,12.8],[0.60,82.8,7.6],[0.70,79.8,2.9],[0.75,76.3,1.5],[0.80,74.1,0.1],[0.85,70.5,0.0],[0.90,65.0,0.0],[0.95,63.7,0.0]];
+const svg=$('sweep'),L=46,R=704,T=14,B=262;const X=t=>L+(t-0.5)/0.45*(R-L),Y=v=>B-v/100*(B-T);
+function drawSweep(sel){let g='';
+ for(const v of [0,25,50,75,100])g+=`<line x1="${L}" x2="${R}" y1="${Y(v)}" y2="${Y(v)}" stroke="var(--line)" stroke-width="1"/><text x="${L-8}" y="${Y(v)+4}" text-anchor="end">${v}%</text>`;
+ for(const t of [0.5,0.6,0.7,0.8,0.9,0.95])g+=`<text x="${X(t)}" y="${B+22}" text-anchor="middle">${t.toFixed(2)}</text>`;
+ g+=`<line x1="${X(.85)}" x2="${X(.85)}" y1="${T}" y2="${B}" stroke="var(--accent)" stroke-width="1.5" stroke-dasharray="4 4"/><text x="${X(.85)+6}" y="${T+12}" style="fill:var(--ink)">default 0.85</text>`;
+ const p=k=>SW.map((d,i)=>(i?'L':'M')+X(d[0]).toFixed(1)+' '+Y(d[k]).toFixed(1)).join(' ');
+ g+=`<path d="${p(1)} L${X(.95)} ${B} L${X(.5)} ${B}Z" fill="var(--hit)" opacity=".1"/>`;
+ g+=`<path d="${p(1)}" fill="none" stroke="var(--hit)" stroke-width="2.5" stroke-linejoin="round"/>`;
+ g+=`<path d="${p(2)}" fill="none" stroke="var(--miss)" stroke-width="2.5" stroke-dasharray="7 5" stroke-linejoin="round"/>`;
+ SW.forEach((d,i)=>{const on=i===sel;g+=`<circle cx="${X(d[0])}" cy="${Y(d[1])}" r="${on?6:4}" fill="var(--hit)" stroke="var(--panel)" stroke-width="2"/><circle cx="${X(d[0])}" cy="${Y(d[2])}" r="${on?6:4}" fill="var(--miss)" stroke="var(--panel)" stroke-width="2"/>`});
+ g+=`<text x="${X(.5)+8}" y="${Y(85.4)-12}" style="fill:var(--ink)">85% from cache looks great…</text><text x="${X(.5)+8}" y="${Y(12.8)-10}" style="fill:var(--miss-ink)">…but 12.8% get the wrong answer</text>`;
+ if(sel!=null)g+=`<line x1="${X(SW[sel][0])}" x2="${X(SW[sel][0])}" y1="${T}" y2="${B}" stroke="var(--ink)" stroke-width="1" opacity=".5"/>`;
+ g+=`<rect x="${L}" y="${T}" width="${R-L}" height="${B-T}" fill="transparent" id="hov"/>`;
+ svg.innerHTML=g}
+function setSel(i,ev){const d=SW[i];$('r-hit').textContent=d[1].toFixed(1)+'%';$('r-wrong').textContent=d[2].toFixed(1)+'%';$('r-wrong').style.color=d[2]>1?'var(--miss-ink)':'';$('r-th').textContent=d[0].toFixed(2);drawSweep(i);
+ const tip=$('tip');if(!ev){tip.classList.remove('on');return}
+ tip.innerHTML=`<b>threshold ${d[0].toFixed(2)}</b><div class="r"><span><i style="background:var(--hit)"></i>From cache</span><b>${d[1].toFixed(1)}%</b></div><div class="r"><span><i style="background:var(--miss)"></i>Wrong answers</span><b>${d[2].toFixed(1)}%</b></div>`;
+ const box=$('sweepbox').getBoundingClientRect();const px=X(d[0])/720*box.width;tip.style.left=Math.min(box.width-180,Math.max(0,px+12))+'px';tip.style.top='18px';tip.classList.add('on')}
+drawSweep(5);
+$('sweepbox').addEventListener('pointermove',e=>{const r=svg.getBoundingClientRect();const x=(e.clientX-r.left)/r.width*720;if(x<L-10||x>R+10)return;let best=0;SW.forEach((d,i)=>{if(Math.abs(X(d[0])-x)<Math.abs(X(SW[best][0])-x))best=i});setSel(best,e)});
+$('sweepbox').addEventListener('pointerleave',()=>setSel(5,null));
+const bio=new IntersectionObserver(es=>{es.forEach(x=>{if(x.isIntersecting){x.target.querySelectorAll('.track i').forEach(i=>i.style.width=i.dataset.w+'%');bio.unobserve(x.target)}})},{threshold:.3});
+document.querySelectorAll('.side .card').forEach(c=>bio.observe(c));
 
-let busy=false;
-$('f').onsubmit=e=>{e.preventDefault();submit()};
-$('q').oninput=()=>{$('err').textContent=''};
-async function submit(){const text=$('q').value.trim();if(!text){$('err').textContent='Type a message first, or pick one of the examples above.';$('q').focus();return}
- if(busy)return;busy=true;$('send').disabled=true;$('err').textContent='';$('q').value='';
- addUser(text);const bot=addBot();const bub=bot.querySelector('.bubble'),meta=bot.querySelector('.meta');
- resetPipe();stage('rate','run','checking');
- try{
-  const {r,info,t0,stream}=await send(text);
-  if(info.rem!=null)drawBucket(+info.rem);
-  if(r.status===429){stage('rate','deny','429');ST.slice(1).forEach(([k])=>stage(k,'skip','skipped'));bot.classList.add('err');bub.textContent=`Rate limit reached. Try again in ${info.retry||1}s.`;meta.innerHTML='<span class="tag LIMIT">429</span>';record('deny',performance.now()-t0);return}
-  if(r.status===401){stage('rate','deny','401');bot.classList.add('err');bub.textContent='This gateway needs an API key. Enter it under Model providers.';$('adminbox').hidden=false;return}
-  const c=info.cache||'ERR';
-  let animDone=false;
-  const anim=(async()=>{stage('rate','ok',info.rem!=null?info.rem+' left':'ok');await sleep(90);
-   if(c==='BYPASS'){stage('cachecheck','miss','bypass');stage('embed','skip','skipped');stage('search','skip','skipped')}
-   else{stage('cachecheck','ok','yes');await sleep(90);stage('embed','ok','done');await sleep(90);stage('search',c==='HIT'?'hit':'miss',info.sim?'nearest '+(+info.sim).toFixed(2):'empty')}
-   if(c==='HIT'){stage('route','skip','skipped');stage('model','skip','skipped')}else{stage('route','run','choosing');stage('model','run','waiting')}
-   animDone=true})();
-  bub.textContent='';
-  const res=await readAnswer(r,stream,t=>{bub.textContent=t;scroll();if(c!=='HIT'&&animDone){stage('route','ok',info.prov||'routed');stage('model','run','streaming')}});
-  const total=performance.now()-t0;
-  await anim;const prov=info.prov||(res.meta&&res.meta.provider)||'';
-  if(c!=='HIT'){stage('route','ok',prov||'routed');stage('model','miss',fmt(total))}
-  bot.classList.add(c==='HIT'?'hit':'miss');
-  const sim=info.sim!=null?+info.sim:null;
-  meta.innerHTML=`<span class="tag ${c}">${c}</span><span>${fmt(total)}</span>${info.gw&&c==='HIT'?`<span>gateway ${fmt(+info.gw)}</span>`:''}${sim!=null?`<span>similarity ${sim.toFixed(2)}</span>`:''}${prov?`<span>${prov}</span>`:''}`;
-  const id=info.entry||(res.meta&&res.meta.entry_id);
-  if(c==='HIT'&&id){const b=document.createElement('button');b.className='flag';b.type='button';b.textContent='Wrong answer?';b.onclick=()=>flag(id,b);meta.append(b)}
-  if(c==='HIT'&&res.meta&&res.meta.matched_prompt){const s=document.createElement('span');s.textContent='matched "'+res.meta.matched_prompt+'"';meta.append(s)}
-  setMeter(sim,c,res.meta&&res.meta.matched_prompt);
-  record(c==='HIT'?'hit':c==='MISS'?'miss':'bypass',total);
-  loadSide();
- }catch(e){bot.classList.add('err');bub.textContent=e.message;meta.innerHTML='<span class="tag ERR">ERROR</span>';stage('model','deny','failed');record('deny',0)}
- finally{busy=false;$('send').disabled=false;$('q').focus()}}
+/* ---------- code tabs ---------- */
+const CODE={
+ 'curl':`<span class="c"># First time: a model answers (MISS)</span>
+curl -i localhost:8080/v1/chat/completions \\
+  -d <span class="s">'{"messages":[{"role":"user","content":"How do I reset my password?"}]}'</span>
 
-async function flag(id,b){b.disabled=true;const r=await fetch('/v1/feedback',{method:'POST',headers:hdrs(),body:JSON.stringify({entry_id:id,helpful:false})});b.textContent=r.ok?'Flagged: no longer served':'Could not flag';loadSide()}
+<span class="c"># Same meaning, different words: answered from cache (HIT)</span>
+curl -i localhost:8080/v1/chat/completions \\
+  -d <span class="s">'{"messages":[{"role":"user","content":"Password bhool gaya, kya karu"}]}'</span>
 
-/* stats + chart */
-function record(kind,ms){log.push({kind,ms});const hits=log.filter(x=>x.kind==='hit'),miss=log.filter(x=>x.kind==='miss'||x.kind==='bypass');const served=log.filter(x=>x.kind!=='deny').length;
- $('k-req').textContent=log.length;$('k-hit').textContent=served?Math.round(hits.length/served*100)+'%':'0%';$('k-mh').textContent=fmt(med(hits.map(x=>x.ms)));$('k-mm').textContent=fmt(med(miss.map(x=>x.ms)));drawChart()}
-function drawChart(){const cv=$('chart'),dpr=Math.min(2,devicePixelRatio||1),W=cv.clientWidth,Hh=150;cv.width=W*dpr;cv.height=Hh*dpr;const x=cv.getContext('2d');x.setTransform(dpr,0,0,dpr,0,0);x.clearRect(0,0,W,Hh);
- const L=36,B=18,T=6,ph=Hh-B-T,lo=Math.log10(0.05),hi=Math.log10(10000);const y=v=>T+ph-(Math.log10(Math.max(v,0.05))-lo)/(hi-lo)*ph;
- x.font='10.5px "IBM Plex Mono", monospace';x.fillStyle=css('--muted');x.strokeStyle=css('--line');x.lineWidth=1;
- for(const [v,l] of [[0.1,'0.1ms'],[1,'1ms'],[10,'10ms'],[100,'100ms'],[1000,'1s']]){const yy=Math.round(y(v))+.5;x.beginPath();x.moveTo(L,yy);x.lineTo(W,yy);x.stroke();x.textAlign='right';x.fillText(l,L-5,yy+3)}
- const data=log.slice(-40);if(!data.length){x.textAlign='center';x.fillText('Each request appears here as a bar',L+(W-L)/2,Hh/2);return}
- const bw=Math.min(22,(W-L-8)/40);const col={hit:css('--hit'),miss:css('--miss'),bypass:css('--muted'),deny:css('--deny')};
- data.forEach((d,i)=>{const xx=L+6+i*(bw+((W-L-8)/40-bw)+0);const top=d.kind==='deny'?y(0.06):y(d.ms);x.fillStyle=col[d.kind];x.beginPath();x.roundRect?x.roundRect(xx,top,Math.max(3,bw-3),T+ph-top,2):x.rect(xx,top,Math.max(3,bw-3),T+ph-top);x.fill()});}
-addEventListener('resize',drawChart);drawChart();
+<span class="c"># X-Sieve-Cache: HIT
+# X-Sieve-Similarity: 1.0000
+# X-Sieve-Latency-Ms: 0.11</span>`,
+ 'Python':`<span class="k">from</span> openai <span class="k">import</span> OpenAI
 
-function setMeter(sim,c,matched){const n=$('needle');if(sim==null){n.style.left='0%';n.style.borderColor=css('--muted');$('simtext').textContent=c==='BYPASS'?'Bypassed: this prompt looked personal or was sent with the cache turned off.':'The cache was empty for this prompt.';return}
- const s=Math.max(0,Math.min(1,sim));n.style.left=(s*100)+'%';n.style.borderColor=c==='HIT'?css('--hit'):css('--miss');
- $('simtext').textContent=c==='HIT'?`Score ${sim.toFixed(2)} is above the ${threshold.toFixed(2)} threshold, so the cached answer was served.`:`Nearest cached question scored ${sim.toFixed(2)}, below the ${threshold.toFixed(2)} threshold, so the gateway asked a model.`}
+client = OpenAI(base_url=<span class="s">"http://localhost:8080/v1"</span>, api_key=<span class="s">"sk-sieve-team-a"</span>)
 
-/* burst */
-$('burst').onclick=async()=>{const b=$('burst');b.disabled=true;b.textContent='Sending...';resetPipe();
- const res=await Promise.all(Array.from({length:25},(_,i)=>fetch('/v1/chat/completions',{method:'POST',headers:hdrs(),body:JSON.stringify({model:'sieve',messages:[{role:'user',content:'What is your refund policy?'}]})}).then(r=>{const rem=r.headers.get('X-RateLimit-Remaining');return{s:r.status,rem}}).catch(()=>({s:0}))));
- const ok=res.filter(r=>r.s===200).length,lim=res.filter(r=>r.s===429).length;
- const rems=res.map(r=>+r.rem).filter(v=>!isNaN(v));if(rems.length)drawBucket(Math.min(...rems));
- stage('rate',lim?'deny':'ok',`${ok} ok, ${lim} x 429`);$('err').textContent='';
- b.textContent=`${ok} accepted, ${lim} rejected`;setTimeout(()=>{b.disabled=false;b.textContent='Send 25 at once'},3000)};
+r = client.chat.completions.with_raw_response.create(
+    model=<span class="s">"sieve"</span>,
+    messages=[{<span class="s">"role"</span>: <span class="s">"user"</span>, <span class="s">"content"</span>: <span class="s">"What is your refund policy?"</span>}],
+)
+<span class="f">print</span>(r.headers[<span class="s">"X-Sieve-Cache"</span>], r.parse().choices[0].message.content)`,
+ 'Node.js':`<span class="k">import</span> OpenAI <span class="k">from</span> <span class="s">"openai"</span>;
 
-/* side panels from the real admin API */
-async function loadSide(){
- try{const r=await fetch('/v1/cache/stats',{headers:hdrs()});if(r.status===401){$('adminbox').hidden=false;$('entries').innerHTML='<p class="note">Enter the admin key to see cache entries.</p>';}
-  else{const j=await r.json();threshold=j.cache.threshold;$('th').style.left=(threshold*100)+'%';$('th').dataset.v=threshold.toFixed(2);
-   $('embedder').className='pill ok';$('embedder').lastChild.textContent=j.embedder;$('count').textContent=`${j.cache.live} live`;
-   const top=j.cache.top_entries||[];$('entries').innerHTML=top.length?'':'<p class="note">Empty. Ask something to fill it.</p>';
-   for(const e of top){const d=document.createElement('div');d.className='entry';d.innerHTML='<span></span><b></b>';d.firstChild.textContent=e.prompt;d.firstChild.title=e.prompt;d.lastChild.textContent=e.hits+(e.hits===1?' hit':' hits');$('entries').append(d)}}}catch(e){}
- try{const r=await fetch('/v1/providers',{headers:hdrs()});if(r.ok){const j=await r.json();$('provs').innerHTML='';
-   for(const p of j.providers){const d=document.createElement('div');d.className='prov '+p.state;d.innerHTML=`<span class="n"><i class="dot"></i><span></span></span><span class="row" style="gap:10px"><span class="s">${p.state}</span><button type="button" class="mini">${p.state==='disabled'?'Bring online':'Take offline'}</button></span>`;
-    d.querySelector('.n span').textContent=p.name;d.querySelector('button').onclick=async()=>{await fetch(`/v1/providers/${encodeURIComponent(p.name)}/${p.state==='disabled'?'enable':'disable'}`,{method:'POST',headers:hdrs()});loadSide()};$('provs').append(d)}}
-  else if(r.status===401){$('provs').innerHTML='<p class="note">Enter the admin key to manage providers.</p>';$('adminbox').hidden=false}}catch(e){}}
-$('refresh').onclick=loadSide;
-$('savekey').onclick=()=>{key=$('key').value.trim();try{sessionStorage.setItem('sieve-key',key)}catch(e){}loadSide()};
+<span class="k">const</span> client = <span class="k">new</span> OpenAI({ baseURL: <span class="s">"http://localhost:8080/v1"</span>, apiKey: <span class="s">"sk-sieve-team-a"</span> });
 
-async function health(){try{const r=await fetch('/healthz');const j=await r.json();$('health').className='pill ok';$('health').lastChild.textContent='Online '+(j.version||'')}catch(e){$('health').className='pill bad';$('health').lastChild.textContent='Offline'}}
-health();loadSide();setInterval(health,10000);setInterval(loadSide,8000);
-resetPipe();$('q').focus();
+<span class="k">const</span> stream = <span class="k">await</span> client.chat.completions.create({
+  model: <span class="s">"sieve"</span>, stream: <span class="k">true</span>,
+  messages: [{ role: <span class="s">"user"</span>, content: <span class="s">"Explain CAP theorem simply"</span> }],
+});
+<span class="k">for await</span> (<span class="k">const</span> chunk <span class="k">of</span> stream) process.stdout.<span class="f">write</span>(chunk.choices[0]?.delta?.content ?? <span class="s">""</span>);`,
+ 'LangChain':`<span class="k">from</span> langchain_openai <span class="k">import</span> ChatOpenAI
+
+llm = ChatOpenAI(
+    base_url=<span class="s">"http://localhost:8080/v1"</span>,
+    api_key=<span class="s">"sk-sieve-team-a"</span>,
+    model=<span class="s">"sieve"</span>,
+)
+<span class="f">print</span>(llm.invoke(<span class="s">"How long does shipping take?"</span>).content)`,
+ 'Docker Compose':`<span class="c"># Gateway + Redis + Prometheus + Grafana, dashboard preloaded</span>
+git clone https://github.com/Prm01/sieve && <span class="k">cd</span> sieve
+docker compose up --build
+
+<span class="c"># Gateway   http://localhost:8080
+# Grafana   http://localhost:3000</span>`};
+const names=Object.keys(CODE);
+$('tabs').innerHTML=names.map((n,i)=>`<button type="button" role="tab" aria-selected="${i===0}" data-n="${n}">${n}</button>`).join('');
+function showTab(n){document.querySelectorAll('#tabs button').forEach(b=>b.setAttribute('aria-selected',b.dataset.n===n));$('codepre').innerHTML=CODE[n]}
+$('tabs').addEventListener('click',e=>{const b=e.target.closest('button');if(b)showTab(b.dataset.n)});
+$('codecopy').addEventListener('click',()=>sieve.copy($('codepre').innerText,'Code copied'));
+showTab('curl');
+
+/* ---------- decisions + faq ---------- */
+const DEC=[['A similarity threshold of 0.85','I swept 0.50 to 0.95 on 2,000 replayed requests. 0.85 was the lowest value that served no wrong answers while still answering 70.5% from cache.','Some genuine paraphrases score below 0.85 and still go to the model. A safe miss is better than a fast, confident wrong answer.'],
+['Only single-turn requests are cached','"And what about Redis?" means something different in every conversation. Matching only the last message would return answers that ignore the context.','Chat-style apps benefit less. A future version could key on a summary of the conversation.'],
+['Personal prompts never touch the cache','Order numbers, emails, phone numbers and OTPs have one correct answer per user. Serving them to someone else would leak data.','Pattern matching can miss a case. Tenants never share entries, so a miss stays inside one tenant.'],
+['No provider switch mid-stream','Once text has reached the user, switching providers would splice two different answers together, so the router returns an error instead.','A rare failure mid-answer is shown as an error rather than silently recovered.'],
+['The rate limiter fails open','If Redis is unreachable, requests are allowed and the error is counted. A limiter outage should not become a product outage.','During a Redis outage, limits are not enforced.'],
+['Coalescing works within one replica','Sharing calls across replicas would need a distributed lock, which costs a Redis round trip on every miss.','With several replicas, each can make one call for the same burst.']];
+$('acc').innerHTML=DEC.map(([t,w,c],i)=>`<details${i===0?' open':''}><summary>${t}</summary><div class="body"><div><span class="k">Why</span><p>${w}</p></div><div><span class="k">What it costs</span><p>${c}</p></div></div></details>`).join('');
+const FAQ=[['Does it work with my existing code?','Yes, if your code uses the OpenAI API or an SDK that lets you set a base URL. Point it at Sieve and keep everything else, including streaming.'],
+['Will users ever get the wrong answer?','At the default threshold the benchmark served none. Your traffic is different, so check the similarity histogram in Grafana before lowering it. Any user can flag a cached answer, and it is never served again.'],
+['Which models can it call?','Anthropic Claude, OpenAI, Google Gemini, and any OpenAI-compatible server such as Ollama, vLLM, LM Studio, Groq or OpenRouter. List several and Sieve falls back in order.'],
+['Do I need Redis?','No. Without it the cache and rate limits live in memory, which is fine for one instance. Add Redis when you run several replicas, so they share one cache and one limit.'],
+['How does it understand meaning?','The built-in embedder matches words, spelling variants and synonyms you list, which suits FAQ-style traffic and needs no API. For open-ended traffic, plug in any embeddings API and re-tune the threshold.'],
+['Is it production-ready?','It is tested with the race detector against real Redis on every commit, and each choice is documented with its trade-off. It has not yet run at large scale, and the docs list its limitations plainly.']];
+$('faqs').innerHTML=FAQ.map(([q,a])=>`<details><summary>${q}</summary><div class="body one"><p>${a}</p></div></details>`).join('');
 })();
 </script>
 </body>

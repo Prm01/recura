@@ -1,0 +1,354 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Sieve Docs</title>
+<meta name="description" content="Sieve documentation: quickstart, configuration, API reference, response headers, metrics, deployment and tuning.">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%23E0A100'/%3E%3Cg fill='%2312181C'%3E%3Crect x='7' y='7' width='3' height='18'/%3E%3Crect x='14.5' y='7' width='3' height='18'/%3E%3Crect x='22' y='7' width='3' height='18'/%3E%3C/g%3E%3C/svg%3E">
+<link rel="stylesheet" href="/fonts.css">
+<link rel="stylesheet" href="/site.css">
+<style>
+.layout{display:grid;grid-template-columns:230px minmax(0,1fr);gap:clamp(24px,4vw,56px);padding-block:36px 80px}
+.side{position:sticky;top:86px;align-self:start;max-height:calc(100vh - 110px);overflow:auto;padding-right:6px}
+.side h4{font:500 11px var(--mono);letter-spacing:.12em;text-transform:uppercase;color:var(--faint);margin:20px 0 8px}
+.side h4:first-child{margin-top:0}
+.side a{display:block;text-decoration:none;color:var(--muted);font-size:14.5px;padding:5px 10px;border-left:2px solid transparent;margin-left:-2px}
+.side a:hover{color:var(--ink)}
+.side a.on{color:var(--ink);border-left-color:var(--accent);font-weight:500}
+.doc{max-width:820px;min-width:0}
+.doc h1{font-size:clamp(34px,5vw,52px);font-weight:800;margin:10px 0 14px}
+.doc .intro{font-size:18.5px;color:var(--muted);max-width:62ch}
+.doc h2{font-size:28px;font-weight:800;margin:64px 0 14px;padding-top:12px;scroll-margin-top:80px}
+.doc h3{font-size:19px;margin:30px 0 10px;scroll-margin-top:80px}
+.doc p{margin:0 0 14px;color:var(--ink-2)}
+.doc ul,.doc ol{margin:0 0 16px;padding-left:22px;color:var(--ink-2)}
+.doc li{margin:5px 0}
+.doc .code{margin:14px 0 20px}
+.doc .tblwrap{margin:14px 0 22px}
+.doc .t{font-size:14.5px}
+.doc .t td:first-child{white-space:nowrap}
+.callout{border:1px solid var(--line);border-left:3px solid var(--accent);border-radius:0 10px 10px 0;background:var(--panel);padding:14px 16px;margin:16px 0 20px;font-size:15px;color:var(--ink-2)}
+.callout.warn{border-left-color:var(--miss)}
+.callout b{color:var(--ink)}
+.cards3{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin:18px 0 8px}
+.cards3 a{display:block;text-decoration:none;border:1px solid var(--line);background:var(--panel);border-radius:12px;padding:14px 16px}
+.cards3 a:hover{border-color:var(--ink)}
+.cards3 b{display:block;font:600 15px var(--body)}
+.cards3 span{font-size:13.5px;color:var(--muted)}
+.method{display:inline-block;font:600 11px var(--mono);padding:2px 7px;border-radius:4px;margin-right:6px;color:#fff;background:var(--hit)}
+.method.post{background:var(--accent);color:#1d1400}.method.del{background:var(--miss)}
+.flow{counter-reset:f;list-style:none;padding:0!important}
+.flow li{counter-increment:f;position:relative;padding-left:40px;margin:12px 0}
+.flow li::before{content:counter(f);position:absolute;left:0;top:1px;width:26px;height:26px;border-radius:50%;background:var(--sunk);border:1px solid var(--line);display:grid;place-items:center;font:600 12px var(--mono);color:var(--ink)}
+@media (max-width:900px){.layout{grid-template-columns:1fr}.side{position:static;max-height:none;border:1px solid var(--line);border-radius:12px;padding:14px;background:var(--panel);columns:2;column-gap:12px}.side h4{break-after:avoid;margin-top:12px}.side a{break-inside:avoid;font-size:14px;padding:4px 8px}.cards3{grid-template-columns:1fr}}
+</style>
+<script src="/site.js"></script>
+</head>
+<body>
+<nav class="nav" aria-label="Main">
+  <div class="wrap">
+    <a class="brand" href="/"><span class="mark" aria-hidden="true"></span>Sieve <small>docs</small></a>
+    <div class="links" id="links">
+      <a href="/">Home</a>
+      <a href="/docs" aria-current="page">Docs</a>
+      <a href="/console">Console</a>
+      <a href="/metrics">Metrics</a>
+      <a href="https://github.com/Prm01/sieve" target="_blank" rel="noopener">GitHub</a>
+    </div>
+    <div class="navr">
+      <button class="iconbtn" id="theme" type="button" aria-label="Switch theme"></button>
+      <button class="iconbtn menu" id="menu" type="button" aria-label="Menu" aria-expanded="false" aria-controls="links"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M4 7h16M4 12h16M4 17h16"/></svg></button>
+    </div>
+  </div>
+</nav>
+
+<div class="wrap layout">
+  <aside class="side" aria-label="On this page">
+    <h4>Start</h4>
+    <a href="#quickstart">Quickstart</a>
+    <a href="#flow">How a request flows</a>
+    <h4>Configure</h4>
+    <a href="#config">Environment variables</a>
+    <a href="#file">Config file</a>
+    <a href="#providers">Providers</a>
+    <a href="#embedders">Embedders</a>
+    <a href="#tuning">Tuning the threshold</a>
+    <h4>API</h4>
+    <a href="#chat">Chat completions</a>
+    <a href="#headers">Response headers</a>
+    <a href="#feedback">Feedback</a>
+    <a href="#admin">Admin endpoints</a>
+    <a href="#metrics">Metrics</a>
+    <h4>Operate</h4>
+    <a href="#deploy">Deploying</a>
+    <a href="#security">Security checklist</a>
+    <a href="#troubleshooting">Troubleshooting</a>
+    <a href="#limits">Limitations</a>
+  </aside>
+
+  <main class="doc">
+    <span class="eyebrow">Documentation &middot; <span data-version>–</span></span>
+    <h1>Sieve documentation</h1>
+    <p class="intro">Everything you need to run Sieve, point an app at it, and tune it for your traffic. Sieve speaks the OpenAI API, so most apps only change their base URL.</p>
+    <div class="cards3">
+      <a href="#quickstart"><b>Run it in a minute</b><span>Download, Docker or source</span></a>
+      <a href="#chat"><b>API reference</b><span>Requests, streaming, headers</span></a>
+      <a href="#tuning"><b>Tune the cache</b><span>Pick a safe threshold</span></a>
+    </div>
+
+    <h2 id="quickstart">Quickstart</h2>
+    <p>Sieve needs no API key to start. Two mock models answer until you add a real provider, so you can try caching and fallback for free.</p>
+    <h3>Option 1: download a release</h3>
+    <p>Get the file for your computer from <a href="https://github.com/Prm01/sieve/releases/latest" target="_blank" rel="noopener">the latest release</a>, extract it, and run <code class="i">start-sieve.bat</code> on Windows or <code class="i">./start-sieve.sh</code> on macOS and Linux. Then open <code class="i">http://localhost:8080</code>.</p>
+    <h3>Option 2: Docker</h3>
+    <div class="code"><button class="copy" type="button" data-copy="docker run -p 8080:8080 ghcr.io/prm01/sieve:latest">Copy</button><pre>docker run -p 8080:8080 ghcr.io/prm01/sieve:latest</pre></div>
+    <p>For the full stack with Redis, Prometheus and Grafana: <code class="i">docker compose up --build</code> in a clone of the repository.</p>
+    <h3>Option 3: from source</h3>
+    <div class="code"><button class="copy" type="button" data-copy="git clone https://github.com/Prm01/sieve && cd sieve && go run ./cmd/sieve">Copy</button><pre>git clone https://github.com/Prm01/sieve && cd sieve
+go run ./cmd/sieve        <span class="c"># needs Go 1.22 or newer</span></pre></div>
+    <h3>Try it</h3>
+    <div class="code"><button class="copy" type="button" data-copy="#try">Copy</button><pre id="try">curl -i localhost:8080/v1/chat/completions \
+  -d '{"messages":[{"role":"user","content":"How do I reset my password?"}]}'
+<span class="c"># X-Sieve-Cache: MISS</span>
+
+curl -i localhost:8080/v1/chat/completions \
+  -d '{"messages":[{"role":"user","content":"Password bhool gaya, kya karu"}]}'
+<span class="c"># X-Sieve-Cache: HIT    X-Sieve-Similarity: 1.0000</span></pre></div>
+    <div class="callout"><b>On Windows PowerShell,</b> <code class="i">curl</code> is not the real curl. Use <code class="i">curl.exe</code>, or the <a href="/console">console</a> in your browser.</div>
+
+    <h2 id="flow">How a request flows</h2>
+    <ol class="flow">
+      <li><b>Authenticate.</b> The API key maps to a tenant. With no keys configured, the client IP is used and the gateway is open.</li>
+      <li><b>Rate limit.</b> One token from the tenant's bucket. An empty bucket returns <code class="i">429</code> with <code class="i">Retry-After</code>.</li>
+      <li><b>Decide whether to cache.</b> Only single-turn requests are cached. Prompts that match a privacy pattern, or that send <code class="i">X-Sieve-Cache: off</code>, bypass it.</li>
+      <li><b>Embed and search.</b> The prompt becomes a 512-dimension unit vector and is compared with every live entry in its partition: the same tenant, model and system prompt.</li>
+      <li><b>Hit.</b> At or above the threshold, the stored answer is returned, streamed or not.</li>
+      <li><b>In flight.</b> If a similar prompt is being answered right now, wait for that answer instead of calling a model again.</li>
+      <li><b>Miss.</b> The router tries providers in order. Retryable failures fall through to the next one, and three in a row open that provider's circuit breaker for 30 seconds.</li>
+      <li><b>Store.</b> The answer is cached, even if the client disconnected, and synced to every replica through Redis.</li>
+    </ol>
+
+    <h2 id="config">Environment variables</h2>
+    <p>Everything can be set with environment variables. They override the config file.</p>
+    <div class="tblwrap"><table class="t">
+      <thead><tr><th>Variable</th><th>Default</th><th>Purpose</th></tr></thead>
+      <tbody>
+        <tr><td class="m">SIEVE_ADDR</td><td class="m">:8080</td><td>Listen address. <code class="i">PORT</code> is honoured for Render, Railway, Fly and Cloud Run.</td></tr>
+        <tr><td class="m">SIEVE_CONFIG</td><td class="m">none</td><td>Path to a JSON config file.</td></tr>
+        <tr><td class="m">SIEVE_REDIS_URL</td><td class="m">none</td><td><code class="i">redis://[:password@]host:6379/0</code>. Enables the shared cache and fleet-wide rate limits.</td></tr>
+        <tr><td class="m">SIEVE_THRESHOLD</td><td class="m">0.85</td><td>Minimum similarity for a cache hit.</td></tr>
+        <tr><td class="m">SIEVE_TTL</td><td class="m">168h</td><td>How long entries live. Pinned entries never expire.</td></tr>
+        <tr><td class="m">SIEVE_MAX_ENTRIES</td><td class="m">50000</td><td>Per partition. Least recently used entries are evicted after that.</td></tr>
+        <tr><td class="m">SIEVE_RATE_CAPACITY</td><td class="m">20</td><td>Tokens per bucket.</td></tr>
+        <tr><td class="m">SIEVE_RATE_REFILL_PER_SEC</td><td class="m">1</td><td>Tokens added per second.</td></tr>
+        <tr><td class="m">SIEVE_API_KEYS</td><td class="m">none</td><td><code class="i">key1:tenantA,key2:tenantB</code>. When set, every request needs <code class="i">Authorization: Bearer &lt;key&gt;</code>.</td></tr>
+        <tr><td class="m">SIEVE_ADMIN_KEY</td><td class="m">none</td><td>Protects the admin endpoints.</td></tr>
+        <tr><td class="m">SIEVE_PROVIDERS</td><td class="m">anthropic,openai,gemini</td><td>Fallback order when providers come from API-key variables. Add <code class="i">ollama</code> for a local model.</td></tr>
+        <tr><td class="m">SIEVE_PROVIDER_TIMEOUT</td><td class="m">60s</td><td>Per-attempt timeout before falling back.</td></tr>
+        <tr><td class="m">SIEVE_EMBEDDER</td><td class="m">hash</td><td><code class="i">hash</code> (built in) or <code class="i">openai</code> (any OpenAI-compatible embeddings API).</td></tr>
+        <tr><td class="m">SIEVE_LOG</td><td class="m">json</td><td>Set to <code class="i">text</code> for readable logs.</td></tr>
+      </tbody>
+    </table></div>
+
+    <h2 id="file">Config file</h2>
+    <p>For more control, put settings in a JSON file and point <code class="i">SIEVE_CONFIG</code> at it. Durations accept <code class="i">"30s"</code>, <code class="i">"168h"</code> or a number of seconds.</p>
+    <div class="code"><button class="copy" type="button" data-copy="#cfg">Copy</button><pre id="cfg">{
+  "threshold": 0.85,
+  "ttl": "168h",
+  "rate_limit": { "capacity": 20, "refill_per_sec": 1 },
+  "router": { "timeout": "60s", "failure_threshold": 3, "cooldown": "30s" },
+  "providers": [
+    { "name": "claude", "type": "anthropic", "model": "claude-haiku-5-5", "api_key_env": "ANTHROPIC_API_KEY" },
+    { "name": "openai", "type": "openai", "base_url": "https://api.openai.com/v1", "model": "gpt-4o-mini", "api_key_env": "OPENAI_API_KEY" },
+    { "name": "local-llama", "type": "openai", "base_url": "http://localhost:11434/v1", "model": "llama3.2" }
+  ],
+  "api_keys": { "sk-sieve-team-a": "team-a" },
+  "admin_key": "change-me",
+  "synonyms": { "bhool": "reset", "forgot": "reset", "kya": "", "hai": "" }
+}</pre></div>
+    <p>A complete example is in <a href="https://github.com/Prm01/sieve/blob/main/examples/config.example.json" target="_blank" rel="noopener">examples/config.example.json</a>. Use <code class="i">api_key_env</code> rather than <code class="i">api_key</code> so secrets stay out of the file.</p>
+
+    <h2 id="providers">Providers</h2>
+    <div class="tblwrap"><table class="t">
+      <thead><tr><th>type</th><th>Works with</th><th>Needs</th></tr></thead>
+      <tbody>
+        <tr><td class="m">anthropic</td><td>Claude models through the Messages API, streamed</td><td><code class="i">model</code>, API key</td></tr>
+        <tr><td class="m">openai</td><td>OpenAI, Azure OpenAI, Groq, Together, OpenRouter, Ollama, vLLM, LM Studio</td><td><code class="i">base_url</code>, <code class="i">model</code>, key if the server needs one</td></tr>
+        <tr><td class="m">gemini</td><td>Google Gemini, fetched whole and sent as one chunk</td><td><code class="i">model</code>, API key</td></tr>
+        <tr><td class="m">mock</td><td>Offline testing and load tests</td><td>optional <code class="i">latency_ms</code>, <code class="i">jitter_ms</code>, <code class="i">fail_rate</code></td></tr>
+      </tbody>
+    </table></div>
+    <p>Providers are tried in the order listed. Timeouts, 408, 409, 429 and 5xx responses fall through to the next one. 400 and 401 do not, because they would fail on every provider.</p>
+
+    <h2 id="embedders">Embedders</h2>
+    <p>The <b>hash</b> embedder is built in and needs no API. It matches words, spelling variants (character trigrams) and the synonyms you list, which suits FAQ-style traffic. It does not understand meaning the way a neural model does.</p>
+    <p>For open-ended traffic, use an embeddings API:</p>
+    <div class="code"><button class="copy" type="button" data-copy="#emb">Copy</button><pre id="emb">SIEVE_EMBEDDER=openai
+SIEVE_EMBED_BASE_URL=http://localhost:11434/v1   <span class="c"># or https://api.openai.com/v1</span>
+SIEVE_EMBED_MODEL=nomic-embed-text               <span class="c"># or text-embedding-3-small</span></pre></div>
+    <div class="callout warn"><b>Re-tune the threshold after switching embedders.</b> Scores from different embedders are not comparable, so 0.85 may be too strict or too loose.</div>
+
+    <h2 id="tuning">Tuning the threshold</h2>
+    <p>The threshold trades hit rate against wrong answers. On the benchmark workload:</p>
+    <div class="tblwrap"><table class="t">
+      <thead><tr><th>Threshold</th><th>From cache</th><th>Wrong answers</th></tr></thead>
+      <tbody>
+        <tr><td class="m">0.50</td><td>85.4%</td><td style="color:var(--miss-ink)">12.8%</td></tr>
+        <tr><td class="m">0.70</td><td>79.8%</td><td style="color:var(--miss-ink)">2.9%</td></tr>
+        <tr><td class="m">0.80</td><td>74.1%</td><td>0.1%</td></tr>
+        <tr><td class="m">0.85 (default)</td><td><b>70.5%</b></td><td><b>0.0%</b></td></tr>
+        <tr><td class="m">0.90</td><td>65.0%</td><td>0.0%</td></tr>
+      </tbody>
+    </table></div>
+    <ol>
+      <li>Run with the default for a day and open the <b>Nearest-match similarity</b> panel in Grafana (<code class="i">sieve_cache_similarity</code>).</li>
+      <li>Spot-check misses that scored just under the threshold. If they are true paraphrases, lower it by 0.02 to 0.05.</li>
+      <li>Run <code class="i">make sweep</code> on a sample of your own prompts to see the trade-off before changing production.</li>
+    </ol>
+
+    <h2 id="chat">Chat completions</h2>
+    <p><span class="method post">POST</span><code class="i">/v1/chat/completions</code>. Same shape as OpenAI. <code class="i">content</code> can be a string or an array of text parts.</p>
+    <div class="code"><button class="copy" type="button" data-copy="#req">Copy</button><pre id="req">{
+  "model": "sieve",
+  "stream": false,
+  "max_tokens": 512,
+  "messages": [
+    { "role": "system", "content": "You are a helpful support agent." },
+    { "role": "user", "content": "What is your refund policy?" }
+  ]
+}</pre></div>
+    <p>The response is a standard chat completion with one extra field, <code class="i">sieve</code>:</p>
+    <div class="code"><pre>{
+  "id": "chatcmpl-1f3c...",
+  "object": "chat.completion",
+  "choices": [{ "index": 0, "message": { "role": "assistant", "content": "Refunds are issued..." }, "finish_reason": "stop" }],
+  "usage": { "prompt_tokens": 7, "completion_tokens": 22, "total_tokens": 29 },
+  "sieve": { "cache": "hit", "similarity": 0.97, "entry_id": "358f4983e8cc...", "matched_prompt": "what is your refund policy", "provider": "claude" }
+}</pre></div>
+    <h3>Streaming</h3>
+    <p>With <code class="i">"stream": true</code>, the response is server-sent events in the OpenAI chunk format, ending with <code class="i">data: [DONE]</code>. The last chunk before it carries the <code class="i">sieve</code> object. Cache hits stream too, as one chunk.</p>
+    <h3>Errors</h3>
+    <div class="tblwrap"><table class="t">
+      <thead><tr><th>Status</th><th>Meaning</th></tr></thead>
+      <tbody>
+        <tr><td class="m">400</td><td>Body is not valid JSON, messages are empty, a role is unknown, or the prompt is over the length limit.</td></tr>
+        <tr><td class="m">401</td><td>API keys are configured and the request sent none, or an unknown one.</td></tr>
+        <tr><td class="m">429</td><td>The tenant's bucket is empty. Wait for <code class="i">Retry-After</code> seconds.</td></tr>
+        <tr><td class="m">502</td><td>Every provider failed. The body lists each attempt and its error.</td></tr>
+        <tr><td class="m">503</td><td>No provider is available: all disabled or their breakers are open.</td></tr>
+      </tbody>
+    </table></div>
+
+    <h2 id="headers">Response headers</h2>
+    <div class="tblwrap"><table class="t">
+      <thead><tr><th>Header</th><th>Meaning</th></tr></thead>
+      <tbody>
+        <tr><td class="m">X-Sieve-Cache</td><td><code class="i">HIT</code>, <code class="i">MISS</code> or <code class="i">BYPASS</code>.</td></tr>
+        <tr><td class="m">X-Sieve-Coalesced</td><td><code class="i">true</code> when the answer came from a concurrent request's model call.</td></tr>
+        <tr><td class="m">X-Sieve-Similarity</td><td>Score of the nearest cached prompt, from 0 to 1.</td></tr>
+        <tr><td class="m">X-Sieve-Entry</td><td>The cache entry served or created. Use it for feedback.</td></tr>
+        <tr><td class="m">X-Sieve-Provider</td><td>The provider that answered.</td></tr>
+        <tr><td class="m">X-Sieve-Latency-Ms</td><td>Time spent inside the gateway.</td></tr>
+        <tr><td class="m">X-RateLimit-Remaining</td><td>Tokens left in the bucket.</td></tr>
+      </tbody>
+    </table></div>
+    <p>Send the request header <code class="i">X-Sieve-Cache: off</code> to skip the cache for one request.</p>
+
+    <h2 id="feedback">Feedback</h2>
+    <p><span class="method post">POST</span><code class="i">/v1/feedback</code> stops a cached answer from being served. Use the id from <code class="i">X-Sieve-Entry</code>.</p>
+    <div class="code"><button class="copy" type="button" data-copy="#fb">Copy</button><pre id="fb">curl localhost:8080/v1/feedback -d '{"entry_id": "358f4983e8cc...", "helpful": false}'</pre></div>
+
+    <h2 id="admin">Admin endpoints</h2>
+    <p>When <code class="i">SIEVE_ADMIN_KEY</code> is set, these need <code class="i">Authorization: Bearer &lt;admin key&gt;</code>.</p>
+    <div class="tblwrap"><table class="t">
+      <thead><tr><th>Endpoint</th><th>Does</th></tr></thead>
+      <tbody>
+        <tr><td><span class="method">GET</span><code class="i">/v1/cache/stats</code></td><td>Entry counts, top entries by hits, hit rate.</td></tr>
+        <tr><td><span class="method">GET</span><code class="i">/v1/cache/entries/{id}</code></td><td>One entry, without its vector.</td></tr>
+        <tr><td><span class="method del">DELETE</span><code class="i">/v1/cache/entries/{id}</code></td><td>Remove one entry everywhere.</td></tr>
+        <tr><td><span class="method">GET</span><code class="i">/v1/providers</code></td><td>Each provider's breaker state: healthy, open or disabled.</td></tr>
+        <tr><td><span class="method post">POST</span><code class="i">/v1/providers/{name}/disable</code></td><td>Take a provider out of rotation. <code class="i">/enable</code> brings it back.</td></tr>
+      </tbody>
+    </table></div>
+    <p>Public endpoints: <code class="i">GET /healthz</code>, <code class="i">GET /v1/models</code>, and <code class="i">GET /v1/public/stats</code>, which returns aggregate numbers only, never prompts, answers or tenant names.</p>
+
+    <h2 id="metrics">Metrics</h2>
+    <p><code class="i">GET /metrics</code> serves Prometheus text format. A ready-made Grafana dashboard is in <code class="i">deploy/grafana</code>.</p>
+    <div class="tblwrap"><table class="t">
+      <thead><tr><th>Metric</th><th>Type</th><th>Labels</th><th>Meaning</th></tr></thead>
+      <tbody>
+        <tr><td class="m">sieve_requests_total</td><td>counter</td><td class="m">result</td><td>Requests by outcome: hit, coalesced, miss, bypass, rate_limited, error, cancelled.</td></tr>
+        <tr><td class="m">sieve_request_duration_seconds</td><td>histogram</td><td class="m">result</td><td>End-to-end latency.</td></tr>
+        <tr><td class="m">sieve_provider_requests_total</td><td>counter</td><td class="m">provider, status</td><td>Upstream model calls.</td></tr>
+        <tr><td class="m">sieve_provider_duration_seconds</td><td>histogram</td><td class="m">provider</td><td>Upstream model latency.</td></tr>
+        <tr><td class="m">sieve_cache_similarity</td><td>histogram</td><td></td><td>Nearest-entry score for each lookup. Use it to tune the threshold.</td></tr>
+        <tr><td class="m">sieve_cache_entries</td><td>gauge</td><td></td><td>Live cache entries.</td></tr>
+        <tr><td class="m">sieve_tokens_saved_total</td><td>counter</td><td></td><td>Estimated output tokens served from cache.</td></tr>
+        <tr><td class="m">sieve_ratelimit_errors_total</td><td>counter</td><td></td><td>Limiter backend errors; requests were allowed.</td></tr>
+        <tr><td class="m">sieve_embedder_errors_total</td><td>counter</td><td></td><td>Embedding failures; requests bypassed the cache.</td></tr>
+      </tbody>
+    </table></div>
+    <div class="code"><pre><span class="c"># Hit rate over 5 minutes</span>
+sum(rate(sieve_requests_total{result=~"hit|coalesced"}[5m]))
+  / sum(rate(sieve_requests_total{result=~"hit|coalesced|miss"}[5m]))</pre></div>
+
+    <h2 id="deploy">Deploying</h2>
+    <ul>
+      <li><b>Render:</b> the <a href="https://render.com/deploy?repo=https://github.com/Prm01/sieve" target="_blank" rel="noopener">Deploy to Render</a> button creates the gateway and a Redis-compatible store from <code class="i">render.yaml</code>.</li>
+      <li><b>Fly.io:</b> <code class="i">fly launch --copy-config && fly deploy</code> uses <code class="i">fly.toml</code>.</li>
+      <li><b>Kubernetes:</b> <code class="i">deploy/k8s/sieve.yaml</code> runs three replicas with an autoscaler, health probes and a read-only root filesystem.</li>
+      <li><b>Any container platform:</b> set <code class="i">SIEVE_REDIS_URL</code> and at least one provider key.</li>
+    </ul>
+
+    <h2 id="security">Security checklist</h2>
+    <ul>
+      <li>Set <code class="i">SIEVE_API_KEYS</code> on any gateway reachable from the internet. Without it, anyone can use your provider keys.</li>
+      <li>Set <code class="i">SIEVE_ADMIN_KEY</code> so nobody else can read or delete cache entries or disable providers.</li>
+      <li>Keep Redis on a private network with a password. It holds prompts and answers.</li>
+      <li>Set a low rate limit and a spending cap with your provider on a public demo.</li>
+      <li>Review the privacy patterns for your domain and add your own through <code class="i">privacy_patterns</code>.</li>
+    </ul>
+
+    <h2 id="troubleshooting">Troubleshooting</h2>
+    <div class="tblwrap"><table class="t">
+      <thead><tr><th>Symptom</th><th>Fix</th></tr></thead>
+      <tbody>
+        <tr><td>Everything is a MISS</td><td>Check the similarity header. Scores just under the threshold mean it is too strict, or the embedder needs synonyms for your wording.</td></tr>
+        <tr><td>Everything is a BYPASS</td><td>The prompt matched a privacy pattern, the request had several turns, or <code class="i">X-Sieve-Cache: off</code> was sent.</td></tr>
+        <tr><td>Answers say "Mock answer to..."</td><td>No provider key was found, so the mock models are answering. Set <code class="i">ANTHROPIC_API_KEY</code> or another key and restart.</td></tr>
+        <tr><td><code class="i">connect to redis</code> on start</td><td>Redis is not reachable at <code class="i">SIEVE_REDIS_URL</code>. Remove the variable to run with an in-memory cache.</td></tr>
+        <tr><td><code class="i">address already in use</code></td><td>Another Sieve or app is on port 8080. Stop it or set <code class="i">SIEVE_ADDR=:8081</code>.</td></tr>
+        <tr><td>503 no_provider_available</td><td>Every provider is disabled or its breaker is open. Check <code class="i">/v1/providers</code>; breakers close after 30 seconds.</td></tr>
+      </tbody>
+    </table></div>
+
+    <h2 id="limits">Limitations</h2>
+    <ul>
+      <li>The hash embedder is lexical. Use an embeddings API for open-ended traffic.</li>
+      <li>Vector search is exact, which stays fast up to roughly 10,000 entries per partition.</li>
+      <li>Request coalescing works within one replica.</li>
+      <li>Privacy detection is pattern-based. It errs towards bypassing but is not a data-protection review.</li>
+      <li>The Redis client has no TLS or cluster mode yet.</li>
+    </ul>
+    <p class="note" style="margin-top:40px">Found a mistake in these docs? <a href="https://github.com/Prm01/sieve/issues" target="_blank" rel="noopener">Open an issue</a>.</p>
+  </main>
+</div>
+
+<footer class="f">
+  <div class="wrap">
+    <div><a class="brand" href="/" style="display:inline-flex"><span class="mark" aria-hidden="true"></span>Sieve</a><p style="margin-top:10px;max-width:36ch">Open-source LLM gateway. MIT licence. Built by Pramod Yadav.</p></div>
+    <div><h4>Product</h4><a href="/">Overview</a><a href="/console">Live console</a><a href="/metrics">Metrics</a></div>
+    <div><h4>Project</h4><a href="https://github.com/Prm01/sieve" target="_blank" rel="noopener">Source code</a><a href="https://github.com/Prm01/sieve/releases" target="_blank" rel="noopener">Releases</a><a href="https://github.com/Prm01/sieve/blob/main/docs/ARCHITECTURE.md" target="_blank" rel="noopener">Design decisions</a></div>
+    <div><h4>Author</h4><a href="https://www.linkedin.com/in/pramod-yadav-7810b5299" target="_blank" rel="noopener">LinkedIn</a><a href="https://github.com/Prm01" target="_blank" rel="noopener">GitHub</a></div>
+  </div>
+</footer>
+<script>
+(function(){
+const links=[...document.querySelectorAll('.side a')];const ids=links.map(a=>a.getAttribute('href').slice(1));
+const io=new IntersectionObserver(es=>{es.forEach(e=>{if(e.isIntersecting){links.forEach(a=>a.classList.toggle('on',a.getAttribute('href')==='#'+e.target.id))}})},{rootMargin:'-80px 0px -70% 0px'});
+ids.forEach(id=>{const el=document.getElementById(id);if(el)io.observe(el)});
+})();
+</script>
+</body>
+</html>

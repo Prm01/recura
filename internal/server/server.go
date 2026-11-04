@@ -54,6 +54,8 @@ type Server struct {
 	o       Options
 	mux     *http.ServeMux
 	flights flights
+	recent  *recent
+	started time.Time
 }
 
 // Metrics are the gateway's Prometheus series.
@@ -108,7 +110,7 @@ func New(o Options) *Server {
 	if o.MaxPromptLen <= 0 {
 		o.MaxPromptLen = 8000
 	}
-	s := &Server{o: o, mux: http.NewServeMux()}
+	s := &Server{o: o, mux: http.NewServeMux(), recent: newRecent(500), started: time.Now()}
 	s.mux.HandleFunc("POST /v1/chat/completions", s.chat)
 	s.mux.HandleFunc("GET /v1/models", s.models)
 	s.mux.HandleFunc("POST /v1/feedback", s.feedback)
@@ -124,6 +126,9 @@ func New(o Options) *Server {
 		s.mux.Handle("GET /metrics", o.Metrics.Reg.Handler())
 	}
 	sub, _ := fs.Sub(static, "static")
+	s.mux.HandleFunc("GET /v1/public/stats", s.publicStats)
+	s.mux.HandleFunc("GET /console", page(sub, "console.html"))
+	s.mux.HandleFunc("GET /docs", page(sub, "docs.html"))
 	s.mux.Handle("GET /", http.FileServer(http.FS(sub)))
 	return s
 }
@@ -502,6 +507,9 @@ func errResult(err error) string {
 
 func (s *Server) record(r *http.Request, oc outcome) {
 	d := time.Since(oc.start)
+	if oc.result != "" && oc.result != "unauthorized" && oc.result != "bad_request" {
+		s.recent.add(recentEvent{Result: oc.result, Ms: float64(d.Microseconds()) / 1000, Provider: oc.provider, Similarity: oc.similarity, At: time.Now().UnixMilli()})
+	}
 	if s.o.Metrics != nil {
 		s.o.Metrics.Requests.Inc(oc.result)
 		s.o.Metrics.Duration.Observe(d.Seconds(), oc.result)

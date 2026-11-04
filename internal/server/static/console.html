@@ -1,0 +1,359 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Sieve Console</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%23E0A100'/%3E%3Cg fill='%2312181C'%3E%3Crect x='7' y='7' width='3' height='18'/%3E%3Crect x='14.5' y='7' width='3' height='18'/%3E%3Crect x='22' y='7' width='3' height='18'/%3E%3C/g%3E%3C/svg%3E">
+<link rel="stylesheet" href="/fonts.css">
+<script src="/site.js"></script>
+<style>
+/* Layout: operator console. Left = conversation through the gateway, right = live instruments. Signal amber accent, green = cache hit, rust = model call. */
+:root{
+  --bg:#EDEFEA;--panel:#F8F9F5;--sunk:#E3E6E0;--ink:#12181C;--muted:#5B656B;--line:#CDD2CB;
+  --accent:#E0A100;--accent-soft:#F6E3A8;--accent-ink:#3A2900;
+  --hit:#13794F;--hit-soft:#CFEBDD;--miss:#BC4418;--miss-soft:#F5D9CC;--deny:#7A4BB0;--deny-soft:#E6DAF3;
+  --display:"Bricolage Grotesque","Avenir Next",system-ui,sans-serif;
+  --body:"IBM Plex Sans",system-ui,-apple-system,"Segoe UI",sans-serif;
+  --mono:"IBM Plex Mono",ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --bg:#0E1316;--panel:#151C20;--sunk:#0A0E10;--ink:#E7EBE8;--muted:#97A1A6;--line:#283237;
+  --accent:#F2B42C;--accent-soft:#3B2F10;--accent-ink:#F6E3A8;
+  --hit:#2FA674;--hit-soft:#123527;--miss:#DD6A3B;--miss-soft:#3D1E12;--deny:#B48CE6;--deny-soft:#2B1F3D;color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#0E1316;--panel:#151C20;--sunk:#0A0E10;--ink:#E7EBE8;--muted:#97A1A6;--line:#283237;
+  --accent:#F2B42C;--accent-soft:#3B2F10;--accent-ink:#F6E3A8;
+  --hit:#2FA674;--hit-soft:#123527;--miss:#DD6A3B;--miss-soft:#3D1E12;--deny:#B48CE6;--deny-soft:#2B1F3D;color-scheme:dark}
+*{box-sizing:border-box}
+html,body{height:100%}
+body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.55 var(--body)}
+button{font:inherit;cursor:pointer;color:inherit}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.wrap{max-width:1360px;margin:0 auto;padding:0 max(18px,env(safe-area-inset-right)) 28px max(18px,env(safe-area-inset-left))}
+
+/* top bar */
+.top{display:flex;align-items:center;justify-content:space-between;gap:14px;flex-wrap:wrap;padding-block:16px;border-bottom:1px solid var(--line);margin-bottom:18px}
+.brand{display:flex;align-items:center;gap:10px;font:800 22px var(--display);letter-spacing:-.02em}
+.brand i{width:24px;height:24px;border-radius:6px;background:repeating-linear-gradient(90deg,var(--ink) 0 2px,transparent 2px 5px),var(--accent)}
+.brand small{font:500 12px var(--mono);color:var(--muted);letter-spacing:.08em;text-transform:uppercase;margin-left:4px}
+.status{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.pill{display:inline-flex;align-items:center;gap:7px;font:500 12px var(--mono);padding:6px 11px;border-radius:999px;border:1px solid var(--line);background:var(--panel);color:var(--muted)}
+.pill i{width:8px;height:8px;border-radius:50%;background:var(--muted)}
+.pill.ok{color:var(--hit);border-color:var(--hit)}.pill.ok i{background:var(--hit);box-shadow:0 0 0 3px var(--hit-soft)}
+.pill.bad{color:var(--miss);border-color:var(--miss)}.pill.bad i{background:var(--miss)}
+.toplinks{display:flex;gap:4px;font-size:14px;align-items:center}
+.toplinks a{color:var(--muted);text-decoration:none;padding:6px 10px;border-radius:8px}.toplinks a:hover{color:var(--ink);background:var(--sunk)}
+.toplinks a[aria-current]{color:var(--ink);font-weight:500}
+.brand{text-decoration:none;color:inherit}
+.iconbtn{width:34px;height:34px;display:inline-grid;place-items:center;border:1px solid var(--line);background:var(--panel);border-radius:9px}
+.iconbtn svg{width:16px;height:16px}
+.toast{position:fixed;left:50%;bottom:24px;transform:translate(-50%,20px);opacity:0;background:var(--ink);color:var(--bg);padding:10px 16px;border-radius:10px;font-size:14px;transition:opacity .2s,transform .2s;pointer-events:none;z-index:50}.toast.on{opacity:1;transform:translate(-50%,0)}
+
+.grid{display:grid;grid-template-columns:minmax(0,1.35fr) minmax(0,1fr);gap:18px;align-items:start}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:18px;min-width:0}
+.label{font:500 11.5px var(--mono);letter-spacing:.1em;text-transform:uppercase;color:var(--muted)}
+.row{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap}
+
+/* conversation */
+.convo{display:flex;flex-direction:column;height:calc(100vh - 110px);min-height:620px;padding:0;overflow:hidden}
+.convo-head{padding:16px 18px 12px;border-bottom:1px solid var(--line)}
+.convo-head h1{font:800 26px/1.1 var(--display);letter-spacing:-.02em;margin:0 0 4px}
+.convo-head p{margin:0;color:var(--muted);font-size:14px}
+.pipe{display:grid;grid-template-columns:repeat(6,1fr);gap:6px;margin-top:14px}
+.stg{border:1px solid var(--line);border-radius:8px;padding:8px 9px;background:var(--bg);transition:background .25s,border-color .25s,opacity .25s;min-width:0}
+.stg b{display:block;font:600 12.5px var(--body);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.stg span{display:block;font:11px var(--mono);color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.stg.run{border-color:var(--accent);background:var(--accent-soft)}
+.stg.ok{border-color:var(--ink)}
+.stg.hit{border-color:var(--hit);background:var(--hit-soft)}
+.stg.miss{border-color:var(--miss);background:var(--miss-soft)}
+.stg.deny{border-color:var(--deny);background:var(--deny-soft)}
+.stg.skip{opacity:.4}
+.thread{flex:1;overflow:auto;padding:18px;display:flex;flex-direction:column;gap:14px}
+.empty{margin:auto;text-align:center;color:var(--muted);max-width:420px}
+.empty h2{font:700 20px var(--display);color:var(--ink);margin:0 0 6px}
+.msg{max-width:86%;display:flex;flex-direction:column;gap:6px}
+.msg.user{align-self:flex-end;align-items:flex-end}
+.bubble{padding:10px 14px;border-radius:14px;white-space:pre-wrap;word-break:break-word}
+.user .bubble{background:var(--ink);color:var(--bg);border-bottom-right-radius:4px}
+.bot .bubble{background:var(--bg);border:1px solid var(--line);border-bottom-left-radius:4px}
+.bot.hit .bubble{border-color:var(--hit)}
+.bot.err .bubble{border-color:var(--deny);color:var(--deny)}
+.meta{display:flex;gap:8px;align-items:center;flex-wrap:wrap;font:12px var(--mono);color:var(--muted)}
+.tag{font:600 10.5px var(--mono);letter-spacing:.07em;padding:2px 7px;border-radius:4px;color:var(--panel);background:var(--muted)}
+.tag.HIT{background:var(--hit)}.tag.MISS{background:var(--miss)}.tag.BYPASS{background:var(--muted)}.tag.ERR,.tag.LIMIT{background:var(--deny)}
+.flag{border:1px solid var(--line);background:transparent;border-radius:6px;padding:2px 8px;font-size:12px}
+.flag:hover{border-color:var(--ink)}
+.composer{border-top:1px solid var(--line);padding:14px 18px 16px;display:grid;gap:10px}
+.chips{display:flex;gap:7px;flex-wrap:wrap}
+.chip{border:1px solid var(--line);background:transparent;border-radius:999px;padding:5px 11px;font-size:13px}
+.chip:hover{border-color:var(--ink)}
+.chip small{font:11px var(--mono);color:var(--muted);margin-left:4px}
+form{display:flex;gap:8px}
+#q{flex:1;min-width:0;font:inherit;color:inherit;background:var(--bg);border:1px solid var(--line);border-radius:10px;padding:12px 14px}
+#q:focus{outline:none;border-color:var(--ink)}
+.send{border:1px solid var(--ink);background:var(--ink);color:var(--bg);border-radius:10px;padding:0 20px;font-weight:600}
+.send:disabled{opacity:.5;cursor:default}
+.opts{display:flex;gap:16px;flex-wrap:wrap;font-size:13px;color:var(--muted);align-items:center}
+.opts label{display:inline-flex;gap:6px;align-items:center;cursor:pointer}
+.opts input[type=checkbox]{accent-color:var(--accent)}
+.err{color:var(--miss);font-size:13px;min-height:0}
+
+/* instruments */
+.side{display:grid;gap:18px}
+.kpis{display:grid;grid-template-columns:repeat(2,1fr);gap:1px;background:var(--line);border-radius:14px;overflow:hidden;border:1px solid var(--line)}
+.kpis div{background:var(--panel);padding:16px}
+.kpis b{display:block;font:800 30px/1.1 var(--display);font-variant-numeric:tabular-nums;letter-spacing:-.02em}
+.kpis small{font-size:13px;color:var(--muted)}
+.kpis b.hitc{color:var(--hit)}
+canvas{display:block;width:100%}
+.legend{display:flex;gap:14px;flex-wrap:wrap;font:11.5px var(--mono);color:var(--muted);margin-top:8px}
+.legend span{display:inline-flex;gap:6px;align-items:center}
+.dot{width:9px;height:9px;border-radius:50%;display:inline-block}
+.meter{position:relative;height:16px;border-radius:6px;background:linear-gradient(90deg,var(--miss-soft),var(--accent-soft) 70%,var(--hit-soft));margin:16px 0 6px;border:1px solid var(--line)}
+.meter .th{position:absolute;top:-6px;bottom:-6px;width:2px;background:var(--ink)}
+.meter .th::after{content:attr(data-v);position:absolute;top:-18px;left:50%;transform:translateX(-50%);font:11px var(--mono);color:var(--ink);white-space:nowrap}
+.meter .needle{position:absolute;top:50%;width:16px;height:16px;border-radius:50%;background:var(--panel);border:3px solid var(--muted);transform:translate(-50%,-50%);transition:left .5s cubic-bezier(.2,.8,.2,1),border-color .3s}
+.meter-scale{display:flex;justify-content:space-between;font:11px var(--mono);color:var(--muted)}
+.simtext{font-size:14px;margin-top:8px}
+.bucket{display:flex;gap:3px;margin-top:10px}
+.bucket i{flex:1;height:12px;border-radius:2px;background:var(--line);transition:background .2s}
+.bucket i.on{background:var(--accent)}
+.mini{border:1px solid var(--line);background:transparent;border-radius:7px;padding:5px 10px;font-size:13px}
+.mini:hover{border-color:var(--ink)}
+.provs{display:grid;gap:8px;margin-top:10px}
+.prov{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:9px 11px;border-radius:9px;background:var(--bg);border:1px solid var(--line)}
+.prov .n{display:flex;align-items:center;gap:9px;font-weight:500}
+.prov .s{font:11.5px var(--mono);color:var(--muted)}
+.prov.healthy .dot{background:var(--hit)}.prov.open .dot{background:var(--accent)}.prov.disabled .dot{background:var(--miss)}
+.prov.disabled .n{text-decoration:line-through;color:var(--muted)}
+.entries{display:grid;gap:6px;margin-top:10px;max-height:240px;overflow:auto}
+.entry{display:grid;grid-template-columns:1fr auto;gap:10px;font-size:13.5px;padding:7px 10px;border-radius:7px;background:var(--bg)}
+.entry span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.entry b{font:500 12px var(--mono);color:var(--hit)}
+.note{font-size:12.5px;color:var(--muted);margin-top:8px}
+.adminkey{display:flex;gap:8px;margin-top:10px}
+.adminkey input{flex:1;min-width:0;font:13px var(--mono);color:inherit;background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:7px 10px}
+@media (max-width:1000px){.grid{grid-template-columns:1fr}.convo{height:auto;min-height:0}.thread{max-height:60vh;min-height:280px}}
+@media (max-width:560px){.pipe{grid-template-columns:repeat(3,1fr)}.kpis b{font-size:24px}.msg{max-width:96%}}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="top">
+    <a class="brand" href="/"><i aria-hidden="true"></i>Sieve<small>console</small></a>
+    <div class="status">
+      <span class="pill" id="health"><i></i><span>Connecting</span></span>
+      <span class="pill" id="embedder"><i></i><span>embedder</span></span>
+      <nav class="toplinks"><a href="/">Home</a><a href="/console" aria-current="page">Console</a><a href="/docs">Docs</a><a href="/metrics" target="_blank">Metrics</a><a href="https://github.com/Prm01/sieve" target="_blank" rel="noopener">GitHub</a><button class="iconbtn" id="theme" type="button" aria-label="Switch theme"></button></nav>
+    </div>
+  </header>
+
+  <div class="grid">
+    <section class="card convo">
+      <div class="convo-head">
+        <h1>Ask once. Answer forever.</h1>
+        <p>Every message goes through this gateway. Ask a question, then ask it again in different words and watch it skip the model.</p>
+        <div class="pipe" id="pipe"></div>
+      </div>
+      <div class="thread" id="thread" aria-live="polite">
+        <div class="empty" id="empty"><h2>No requests yet</h2><p>Try "How do I reset my password?" and then "Password bhool gaya, kya karu" to see a cache hit in under a millisecond.</p></div>
+      </div>
+      <div class="composer">
+        <div class="chips" id="chips"></div>
+        <form id="f">
+          <label for="q" style="position:absolute;left:-9999px">Message</label>
+          <input id="q" autocomplete="off" maxlength="4000" placeholder="Ask anything...">
+          <button class="send" id="send">Send</button>
+        </form>
+        <div class="err" id="err" role="alert"></div>
+        <div class="opts">
+          <label><input type="checkbox" id="stream" checked> Stream response</label>
+          <label><input type="checkbox" id="nocache"> Skip cache</label>
+          <button type="button" class="mini" id="clear">Clear chat</button>
+        </div>
+      </div>
+    </section>
+
+    <aside class="side">
+      <div class="kpis">
+        <div><b class="hitc" id="k-hit">0%</b><small>served from cache</small></div>
+        <div><b id="k-req">0</b><small>requests this session</small></div>
+        <div><b id="k-mh">-</b><small>median cache hit</small></div>
+        <div><b id="k-mm">-</b><small>median model call</small></div>
+      </div>
+
+      <div class="card">
+        <div class="row"><span class="label">Latency per request</span><span class="note" style="margin:0">log scale</span></div>
+        <canvas id="chart" height="150" aria-label="Latency of each request in this session"></canvas>
+        <div class="legend"><span><i class="dot" style="background:var(--hit)"></i>Cache hit</span><span><i class="dot" style="background:var(--miss)"></i>Model call</span><span><i class="dot" style="background:var(--muted)"></i>Bypass</span><span><i class="dot" style="background:var(--deny)"></i>Rejected</span></div>
+      </div>
+
+      <div class="card">
+        <span class="label">Last match</span>
+        <div class="meter" id="meter"><div class="th" id="th" data-v="0.85"></div><div class="needle" id="needle" style="left:0"></div></div>
+        <div class="meter-scale"><span>0.0</span><span>0.5</span><span>1.0</span></div>
+        <p class="simtext" id="simtext">Send a message to see how close it was to the nearest cached question.</p>
+      </div>
+
+      <div class="card">
+        <div class="row"><span class="label">Rate limit</span><button type="button" class="mini" id="burst">Send 25 at once</button></div>
+        <div class="bucket" id="bucket"></div>
+        <p class="note" id="bucketnote">Tokens left in your bucket. Each request spends one.</p>
+      </div>
+
+      <div class="card">
+        <div class="row"><span class="label">Model providers</span><button type="button" class="mini" id="refresh">Refresh</button></div>
+        <div class="provs" id="provs"><p class="note">Loading...</p></div>
+        <p class="note">Take a provider offline to watch the router fall back to the next one.</p>
+        <div class="adminkey" id="adminbox" hidden><input id="key" type="password" placeholder="Admin or API key" autocomplete="off" aria-label="Key"><button type="button" class="mini" id="savekey">Use key</button></div>
+      </div>
+
+      <div class="card">
+        <div class="row"><span class="label">Shared cache</span><span class="note" style="margin:0" id="count"></span></div>
+        <div class="entries" id="entries"><p class="note">Loading...</p></div>
+      </div>
+    </aside>
+  </div>
+</div>
+
+<script>
+(function(){
+const $=id=>document.getElementById(id);
+const css=n=>getComputedStyle(document.documentElement).getPropertyValue(n).trim();
+const fmt=ms=>ms==null?'-':ms<1?ms.toFixed(2)+' ms':ms<1000?(ms<10?ms.toFixed(1):Math.round(ms))+' ms':(ms/1000).toFixed(2)+' s';
+const med=a=>{if(!a.length)return null;const b=[...a].sort((x,y)=>x-y);return b[Math.floor(b.length/2)]};
+let key='';try{key=sessionStorage.getItem('sieve-key')||''}catch(e){}
+const hdrs=()=>{const h={'Content-Type':'application/json'};if(key)h.Authorization='Bearer '+key;return h};
+let threshold=0.85,bucketMax=20;const log=[];
+
+/* pipeline */
+const ST=[['rate','Rate limit'],['cachecheck','Cacheable?'],['embed','Embed'],['search','Vector search'],['route','Router'],['model','Model']];
+$('pipe').innerHTML=ST.map(([k,n])=>`<div class="stg" id="st-${k}"><b>${n}</b><span>idle</span></div>`).join('');
+const stage=(k,c,t)=>{const e=$('st-'+k);e.className='stg '+(c||'');e.querySelector('span').textContent=t};
+const resetPipe=()=>ST.forEach(([k])=>stage(k,'','waiting'));
+const sleep=ms=>new Promise(r=>setTimeout(r,ms));
+
+/* chips */
+const CH=[['How do I reset my password?',''],['Password bhool gaya, kya karu','Hinglish'],['What is your refund policy?',''],['whats your refund policy','paraphrase'],['Where is my order #4417?','personal'],['Explain CAP theorem simply','']];
+$('chips').innerHTML=CH.map(([t,s],i)=>`<button type="button" class="chip" data-i="${i}">${t}${s?`<small>${s}</small>`:''}</button>`).join('');
+$('chips').onclick=e=>{const b=e.target.closest('.chip');if(!b)return;$('q').value=CH[+b.dataset.i][0];submit()};
+
+/* thread */
+function addUser(t){$('empty')&&$('empty').remove();const d=document.createElement('div');d.className='msg user';d.innerHTML='<div class="bubble"></div>';d.firstChild.textContent=t;$('thread').append(d);scroll()}
+function addBot(){const d=document.createElement('div');d.className='msg bot';d.innerHTML='<div class="bubble">...</div><div class="meta"></div>';$('thread').append(d);scroll();return d}
+const scroll=()=>{const t=$('thread');t.scrollTop=t.scrollHeight};
+$('clear').onclick=()=>{$('thread').innerHTML='<div class="empty" id="empty"><h2>Chat cleared</h2><p>The cache is not cleared, so asking the same things again will hit.</p></div>';resetPipe()};
+
+/* bucket */
+function drawBucket(rem){if(rem!=null&&rem+1>bucketMax)bucketMax=rem+1;const n=Math.min(bucketMax,40);if($('bucket').children.length!==n)$('bucket').innerHTML='<i></i>'.repeat(n);
+ const on=rem==null?n:Math.round(Math.max(0,rem)/bucketMax*n);[...$('bucket').children].forEach((x,i)=>x.classList.toggle('on',i<on));
+ if(rem!=null)$('bucketnote').textContent=`${rem} of ${bucketMax} tokens left. Each request spends one; they refill over time.`}
+drawBucket(null);
+
+/* request */
+async function send(text,{quiet=false}={}){
+ const msgs=[{role:'user',content:text}];const h=hdrs();if($('nocache').checked)h['X-Sieve-Cache']='off';
+ const stream=$('stream').checked&&!quiet;const t0=performance.now();
+ const r=await fetch('/v1/chat/completions',{method:'POST',headers:h,body:JSON.stringify({model:'sieve',stream,messages:msgs})});
+ const H=k=>r.headers.get(k);const info={status:r.status,cache:H('X-Sieve-Cache'),sim:H('X-Sieve-Similarity'),entry:H('X-Sieve-Entry'),prov:H('X-Sieve-Provider'),gw:H('X-Sieve-Latency-Ms'),rem:H('X-RateLimit-Remaining'),retry:H('Retry-After')};
+ return {r,info,t0,stream};
+}
+async function readAnswer(r,stream,onText){
+ if(!r.ok){const j=await r.json().catch(()=>({}));throw new Error((j.error&&j.error.message)||r.statusText)}
+ if(!stream){const j=await r.json();const t=j.choices[0].message.content;onText(t);return {text:t,meta:j.sieve}}
+ const rd=r.body.getReader(),dec=new TextDecoder();let buf='',text='',meta=null,first=null;
+ for(;;){const{value,done}=await rd.read();if(done)break;buf+=dec.decode(value,{stream:true});let i;
+  while((i=buf.indexOf('\n\n'))>=0){const ev=buf.slice(0,i);buf=buf.slice(i+2);const d=ev.replace(/^data: /,'');if(d==='[DONE]')continue;
+   let j;try{j=JSON.parse(d)}catch(_){continue}
+   if(j.error)throw new Error(j.error.message);const c=j.choices&&j.choices[0];
+   if(c&&c.delta&&c.delta.content){if(first===null)first=performance.now();text+=c.delta.content;onText(text)}
+   if(j.sieve)meta=j.sieve}}
+ return {text,meta,first};
+}
+
+let busy=false;
+$('f').onsubmit=e=>{e.preventDefault();submit()};
+$('q').oninput=()=>{$('err').textContent=''};
+async function submit(){const text=$('q').value.trim();if(!text){$('err').textContent='Type a message first, or pick one of the examples above.';$('q').focus();return}
+ if(busy)return;busy=true;$('send').disabled=true;$('err').textContent='';$('q').value='';
+ addUser(text);const bot=addBot();const bub=bot.querySelector('.bubble'),meta=bot.querySelector('.meta');
+ resetPipe();stage('rate','run','checking');
+ try{
+  const {r,info,t0,stream}=await send(text);
+  if(info.rem!=null)drawBucket(+info.rem);
+  if(r.status===429){stage('rate','deny','429');ST.slice(1).forEach(([k])=>stage(k,'skip','skipped'));bot.classList.add('err');bub.textContent=`Rate limit reached. Try again in ${info.retry||1}s.`;meta.innerHTML='<span class="tag LIMIT">429</span>';record('deny',performance.now()-t0);return}
+  if(r.status===401){stage('rate','deny','401');bot.classList.add('err');bub.textContent='This gateway needs an API key. Enter it under Model providers.';$('adminbox').hidden=false;return}
+  const c=info.cache||'ERR';
+  let animDone=false;
+  const anim=(async()=>{stage('rate','ok',info.rem!=null?info.rem+' left':'ok');await sleep(90);
+   if(c==='BYPASS'){stage('cachecheck','miss','bypass');stage('embed','skip','skipped');stage('search','skip','skipped')}
+   else{stage('cachecheck','ok','yes');await sleep(90);stage('embed','ok','done');await sleep(90);stage('search',c==='HIT'?'hit':'miss',info.sim?'nearest '+(+info.sim).toFixed(2):'empty')}
+   if(c==='HIT'){stage('route','skip','skipped');stage('model','skip','skipped')}else{stage('route','run','choosing');stage('model','run','waiting')}
+   animDone=true})();
+  bub.textContent='';
+  const res=await readAnswer(r,stream,t=>{bub.textContent=t;scroll();if(c!=='HIT'&&animDone){stage('route','ok',info.prov||'routed');stage('model','run','streaming')}});
+  const total=performance.now()-t0;
+  await anim;const prov=info.prov||(res.meta&&res.meta.provider)||'';
+  if(c!=='HIT'){stage('route','ok',prov||'routed');stage('model','miss',fmt(total))}
+  bot.classList.add(c==='HIT'?'hit':'miss');
+  const sim=info.sim!=null?+info.sim:null;
+  meta.innerHTML=`<span class="tag ${c}">${c}</span><span>${fmt(total)}</span>${info.gw&&c==='HIT'?`<span>gateway ${fmt(+info.gw)}</span>`:''}${sim!=null?`<span>similarity ${sim.toFixed(2)}</span>`:''}${prov?`<span>${prov}</span>`:''}`;
+  const id=info.entry||(res.meta&&res.meta.entry_id);
+  if(c==='HIT'&&id){const b=document.createElement('button');b.className='flag';b.type='button';b.textContent='Wrong answer?';b.onclick=()=>flag(id,b);meta.append(b)}
+  if(c==='HIT'&&res.meta&&res.meta.matched_prompt){const s=document.createElement('span');s.textContent='matched "'+res.meta.matched_prompt+'"';meta.append(s)}
+  setMeter(sim,c,res.meta&&res.meta.matched_prompt);
+  record(c==='HIT'?'hit':c==='MISS'?'miss':'bypass',total);
+  loadSide();
+ }catch(e){bot.classList.add('err');bub.textContent=e.message;meta.innerHTML='<span class="tag ERR">ERROR</span>';stage('model','deny','failed');record('deny',0)}
+ finally{busy=false;$('send').disabled=false;$('q').focus()}}
+
+async function flag(id,b){b.disabled=true;const r=await fetch('/v1/feedback',{method:'POST',headers:hdrs(),body:JSON.stringify({entry_id:id,helpful:false})});b.textContent=r.ok?'Flagged: no longer served':'Could not flag';loadSide()}
+
+/* stats + chart */
+function record(kind,ms){log.push({kind,ms});const hits=log.filter(x=>x.kind==='hit'),miss=log.filter(x=>x.kind==='miss'||x.kind==='bypass');const served=log.filter(x=>x.kind!=='deny').length;
+ $('k-req').textContent=log.length;$('k-hit').textContent=served?Math.round(hits.length/served*100)+'%':'0%';$('k-mh').textContent=fmt(med(hits.map(x=>x.ms)));$('k-mm').textContent=fmt(med(miss.map(x=>x.ms)));drawChart()}
+function drawChart(){const cv=$('chart'),dpr=Math.min(2,devicePixelRatio||1),W=cv.clientWidth,Hh=150;cv.width=W*dpr;cv.height=Hh*dpr;const x=cv.getContext('2d');x.setTransform(dpr,0,0,dpr,0,0);x.clearRect(0,0,W,Hh);
+ const L=36,B=18,T=6,ph=Hh-B-T,lo=Math.log10(0.05),hi=Math.log10(10000);const y=v=>T+ph-(Math.log10(Math.max(v,0.05))-lo)/(hi-lo)*ph;
+ x.font='10.5px "IBM Plex Mono", monospace';x.fillStyle=css('--muted');x.strokeStyle=css('--line');x.lineWidth=1;
+ for(const [v,l] of [[0.1,'0.1ms'],[1,'1ms'],[10,'10ms'],[100,'100ms'],[1000,'1s']]){const yy=Math.round(y(v))+.5;x.beginPath();x.moveTo(L,yy);x.lineTo(W,yy);x.stroke();x.textAlign='right';x.fillText(l,L-5,yy+3)}
+ const data=log.slice(-40);if(!data.length){x.textAlign='center';x.fillText('Each request appears here as a bar',L+(W-L)/2,Hh/2);return}
+ const bw=Math.min(22,(W-L-8)/40);const col={hit:css('--hit'),miss:css('--miss'),bypass:css('--muted'),deny:css('--deny')};
+ data.forEach((d,i)=>{const xx=L+6+i*(bw+((W-L-8)/40-bw)+0);const top=d.kind==='deny'?y(0.06):y(d.ms);x.fillStyle=col[d.kind];x.beginPath();x.roundRect?x.roundRect(xx,top,Math.max(3,bw-3),T+ph-top,2):x.rect(xx,top,Math.max(3,bw-3),T+ph-top);x.fill()});}
+addEventListener('resize',drawChart);addEventListener('themechange',drawChart);drawChart();
+
+function setMeter(sim,c,matched){const n=$('needle');if(sim==null){n.style.left='0%';n.style.borderColor=css('--muted');$('simtext').textContent=c==='BYPASS'?'Bypassed: this prompt looked personal or was sent with the cache turned off.':'The cache was empty for this prompt.';return}
+ const s=Math.max(0,Math.min(1,sim));n.style.left=(s*100)+'%';n.style.borderColor=c==='HIT'?css('--hit'):css('--miss');
+ $('simtext').textContent=c==='HIT'?`Score ${sim.toFixed(2)} is above the ${threshold.toFixed(2)} threshold, so the cached answer was served.`:`Nearest cached question scored ${sim.toFixed(2)}, below the ${threshold.toFixed(2)} threshold, so the gateway asked a model.`}
+
+/* burst */
+$('burst').onclick=async()=>{const b=$('burst');b.disabled=true;b.textContent='Sending...';resetPipe();
+ const res=await Promise.all(Array.from({length:25},(_,i)=>fetch('/v1/chat/completions',{method:'POST',headers:hdrs(),body:JSON.stringify({model:'sieve',messages:[{role:'user',content:'What is your refund policy?'}]})}).then(r=>{const rem=r.headers.get('X-RateLimit-Remaining');return{s:r.status,rem}}).catch(()=>({s:0}))));
+ const ok=res.filter(r=>r.s===200).length,lim=res.filter(r=>r.s===429).length;
+ const rems=res.map(r=>+r.rem).filter(v=>!isNaN(v));if(rems.length)drawBucket(Math.min(...rems));
+ stage('rate',lim?'deny':'ok',`${ok} ok, ${lim} x 429`);$('err').textContent='';
+ b.textContent=`${ok} accepted, ${lim} rejected`;setTimeout(()=>{b.disabled=false;b.textContent='Send 25 at once'},3000)};
+
+/* side panels from the real admin API */
+async function loadSide(){
+ try{const r=await fetch('/v1/cache/stats',{headers:hdrs()});if(r.status===401){$('adminbox').hidden=false;$('entries').innerHTML='<p class="note">Enter the admin key to see cache entries.</p>';}
+  else{const j=await r.json();threshold=j.cache.threshold;$('th').style.left=(threshold*100)+'%';$('th').dataset.v=threshold.toFixed(2);
+   $('embedder').className='pill ok';$('embedder').lastChild.textContent=j.embedder;$('count').textContent=`${j.cache.live} live`;
+   const top=j.cache.top_entries||[];$('entries').innerHTML=top.length?'':'<p class="note">Empty. Ask something to fill it.</p>';
+   for(const e of top){const d=document.createElement('div');d.className='entry';d.innerHTML='<span></span><b></b>';d.firstChild.textContent=e.prompt;d.firstChild.title=e.prompt;d.lastChild.textContent=e.hits+(e.hits===1?' hit':' hits');$('entries').append(d)}}}catch(e){}
+ try{const r=await fetch('/v1/providers',{headers:hdrs()});if(r.ok){const j=await r.json();$('provs').innerHTML='';
+   for(const p of j.providers){const d=document.createElement('div');d.className='prov '+p.state;d.innerHTML=`<span class="n"><i class="dot"></i><span></span></span><span class="row" style="gap:10px"><span class="s">${p.state}</span><button type="button" class="mini">${p.state==='disabled'?'Bring online':'Take offline'}</button></span>`;
+    d.querySelector('.n span').textContent=p.name;d.querySelector('button').onclick=async()=>{await fetch(`/v1/providers/${encodeURIComponent(p.name)}/${p.state==='disabled'?'enable':'disable'}`,{method:'POST',headers:hdrs()});loadSide()};$('provs').append(d)}}
+  else if(r.status===401){$('provs').innerHTML='<p class="note">Enter the admin key to manage providers.</p>';$('adminbox').hidden=false}}catch(e){}}
+$('refresh').onclick=loadSide;
+$('savekey').onclick=()=>{key=$('key').value.trim();try{sessionStorage.setItem('sieve-key',key)}catch(e){}loadSide()};
+
+async function health(){try{const r=await fetch('/healthz');const j=await r.json();$('health').className='pill ok';$('health').lastChild.textContent='Online '+(j.version||'')}catch(e){$('health').className='pill bad';$('health').lastChild.textContent='Offline'}}
+health();loadSide();setInterval(health,10000);setInterval(loadSide,8000);
+resetPipe();$('q').focus();
+})();
+</script>
+</body>
+</html>

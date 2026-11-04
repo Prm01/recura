@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased
+
+- Built-in website: home page with a live demo, interactive request pipeline and benchmark charts; documentation at /docs; console moved to /console
+- `GET /v1/public/stats` for live aggregate numbers, with no prompt text
+- Fonts ship inside the binary, so the site works offline
+
 ## v0.1.0
 
 First public release.

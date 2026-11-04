@@ -17,6 +17,12 @@ Semantic caching, multi-provider fallback, rate limiting and Prometheus metrics 
 
 <!-- Drag docs/demo.mp4 into this README on GitHub to embed the 90-second walkthrough here. -->
 
+![Sieve home page: live demo terminal, benchmarks and docs, served by the gateway itself](docs/screenshot-home.jpg)
+
+Every Sieve server comes with its own website at `http://localhost:8080`: a home page with a live demo and benchmark charts, a console at `/console` to chat through the gateway and watch each request, and full documentation at `/docs`.
+
+![Sieve console: chat through the gateway with live pipeline, latency chart and similarity meter](docs/screenshot-console.jpg)
+
 ## Why
 
 Apps that call LLM APIs pay for the same answer again and again. "How do I reset my password?", "I forgot my password" and "password bhool gaya, kya karu" are one question, but they are three paid model calls that each take a second or more.
@@ -67,7 +73,7 @@ git clone https://github.com/Prm01/sieve && cd sieve
 make run          # or: go run ./cmd/sieve
 ```
 
-Open http://localhost:8080 for the console: chat through the gateway, watch each request move through the pipeline, see latency and similarity live, take a model offline to test fallback, and flood the rate limiter. Or use curl:
+Open http://localhost:8080 for the home page, http://localhost:8080/console to chat through the gateway and watch each request move through the pipeline, and http://localhost:8080/docs for the full documentation. Or use curl:
 
 ```bash
 curl -si localhost:8080/v1/chat/completions \
@@ -99,7 +105,7 @@ docker compose up --build
 
 | Service | URL |
 |---|---|
-| Gateway and console | http://localhost:8080 |
+| Gateway, website and console | http://localhost:8080 |
 | Grafana dashboard | http://localhost:3000 |
 | Prometheus | http://localhost:9090 |
 
@@ -239,6 +245,7 @@ Everything works from environment variables. For more control, point `SIEVE_CONF
 | `POST /v1/providers/{name}/disable` or `/enable` | Take a provider out of rotation, for example during an incident. Admin. |
 | `GET /metrics` | Prometheus metrics. |
 | `GET /healthz` | Liveness and version. |
+| `GET /v1/public/stats` | Aggregate live numbers for the website. Never includes prompts or answers. |
 
 Every chat response carries these headers, and a `sieve` object in the body:
 
@@ -283,7 +290,7 @@ internal/ratelimit  token bucket, in memory or atomic in Redis
 internal/resp       minimal Redis client (RESP2)
 internal/metrics    Prometheus text exposition
 internal/privacy    personal-data detection
-internal/server     HTTP API, streaming, web console
+internal/server     HTTP API, streaming, website (home, console, docs)
 deploy/             Prometheus, Grafana and Kubernetes manifests
 ```
 

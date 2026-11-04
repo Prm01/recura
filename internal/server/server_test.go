@@ -263,3 +263,46 @@ func TestCoalescingLeaderFailure(t *testing.T) {
 	}
 	wg.Wait()
 }
+
+func TestPublicStatsAndPages(t *testing.T) {
+	ts, _ := newTestServer(t, nil)
+	chat(t, ts.URL, `{"messages":[{"role":"user","content":"how do i reset my password"}]}`, nil)
+	chat(t, ts.URL, `{"messages":[{"role":"user","content":"pls how do i reset my password"}]}`, nil)
+	resp, err := http.Get(ts.URL + "/v1/public/stats")
+	if err != nil {
+		t.Fatal(err)
+	}
+	var st struct {
+		HitRate  float64 `json:"hit_rate"`
+		Cache    int     `json:"cache_entries"`
+		Median   map[string]*float64
+		Recent   []map[string]any `json:"recent"`
+		Requests map[string]float64
+	}
+	_ = json.NewDecoder(resp.Body).Decode(&st)
+	resp.Body.Close()
+	if st.HitRate != 0.5 || st.Cache != 1 || len(st.Recent) != 2 || st.Recent[0]["result"] != "hit" {
+		t.Fatalf("unexpected public stats: %+v", st)
+	}
+	for _, e := range st.Recent {
+		if _, leaks := e["prompt"]; leaks {
+			t.Fatal("public stats must never include prompt text")
+		}
+	}
+	for path, want := range map[string]string{"/": "Stop paying twice", "/console": "Sieve Console", "/docs": "Sieve documentation", "/site.css": "--accent", "/fonts.css": "@font-face"} {
+		r, err := http.Get(ts.URL + path)
+		if err != nil {
+			t.Fatal(err)
+		}
+		var b strings.Builder
+		sc := bufio.NewScanner(r.Body)
+		sc.Buffer(make([]byte, 1<<20), 1<<20)
+		for sc.Scan() {
+			b.WriteString(sc.Text())
+		}
+		r.Body.Close()
+		if r.StatusCode != 200 || !strings.Contains(b.String(), want) {
+			t.Errorf("%s: status %d, missing %q", path, r.StatusCode, want)
+		}
+	}
+}
