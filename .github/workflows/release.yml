@@ -1,0 +1,31 @@
+# When you publish a release on GitHub, this builds downloads for Windows,
+# macOS and Linux and attaches them to it. If the release has no
+# description, it fills in download instructions.
+name: release
+on:
+  release:
+    types: [published]
+permissions:
+  contents: write
+jobs:
+  binaries:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with: {go-version: "1.22"}
+      - name: Test
+        run: go test ./...
+      - name: Build downloads
+        run: ./scripts/package.sh "${{ github.event.release.tag_name }}"
+      - name: Attach to the release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ github.event.release.tag_name }}
+          BODY: ${{ github.event.release.body }}
+        run: |
+          gh release upload "$TAG" dist/*.zip dist/*.tar.gz dist/checksums.txt --clobber
+          if [ -z "$(echo "$BODY" | tr -d '[:space:]')" ]; then
+            sed "s/VERSION/$TAG/g" .github/release-notes.md > notes.md
+            gh release edit "$TAG" --notes-file notes.md
+          fi

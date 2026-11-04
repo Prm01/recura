@@ -48,6 +48,18 @@ On a realistic support workload it served **70.5% of requests from cache with 0 
 
 ## Quickstart
 
+### Option 1: download and run (no Go needed)
+
+Grab the file for your computer from the [latest release](https://github.com/Prm01/sieve/releases/latest), extract it, and run `start-sieve.bat` (Windows) or `./start-sieve.sh` (Mac, Linux). Then open http://localhost:8080.
+
+### Option 2: Docker
+
+```bash
+docker run -p 8080:8080 ghcr.io/prm01/sieve:latest
+```
+
+### Option 3: from source
+
 Runs with no API keys: two mock models (a primary and a slower backup) answer until you add a real one, so you can try caching and fallback straight away.
 
 ```bash
@@ -254,7 +266,7 @@ The public config ([`examples/config.public.json`](examples/config.public.json))
 
 ### Other options
 
-- **Docker:** `docker build -t sieve .` builds a distroless, non-root image.
+- **Docker:** `docker run -p 8080:8080 ghcr.io/prm01/sieve:latest`, or `docker build -t sieve .` to build the distroless, non-root image yourself.
 - **Kubernetes:** [`deploy/k8s/sieve.yaml`](deploy/k8s/sieve.yaml) runs three replicas with an autoscaler, health probes and a read-only root filesystem.
 - **Any platform that runs a container:** set `SIEVE_REDIS_URL` and at least one provider key.
 

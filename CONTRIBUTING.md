@@ -32,3 +32,7 @@ make sweep         # check that cache quality did not regress
 ## Reporting bugs
 
 Open an issue with the Sieve version (`sieve -version`), your config with secrets removed, the request you sent and the response headers you got back.
+
+## Releasing
+
+Publish a release on GitHub with a new tag such as `v0.2.0`. The `release` workflow runs the tests, builds downloads for Windows, macOS and Linux with `scripts/package.sh`, and attaches them to the release. Leave the description empty to get download instructions filled in automatically.
