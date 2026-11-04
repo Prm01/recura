@@ -11,11 +11,9 @@ Semantic caching, multi-provider fallback, rate limiting and Prometheus metrics 
 ![Dependencies](https://img.shields.io/badge/dependencies-0-brightgreen)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue)](LICENSE)
 
-[Live demo](https://claude.ai/artifact/FbMhVEpPvKb2oTuFs9tChW) · [Quickstart](#quickstart) · [Benchmarks](#benchmarks) · [How it works](#how-it-works) · [Design decisions](docs/ARCHITECTURE.md)
+[Download](https://github.com/Prm01/recura/releases/latest) · [Quickstart](#quickstart) · [Benchmarks](#benchmarks) · [How it works](#how-it-works) · [Design decisions](docs/ARCHITECTURE.md)
 
 </div>
-
-<!-- Drag docs/demo.mp4 into this README on GitHub to embed the 90-second walkthrough here. -->
 
 ![Recura home page: live demo terminal, benchmarks and docs, served by the gateway itself](docs/screenshot-home.jpg)
 
@@ -319,7 +317,7 @@ Issues and pull requests are welcome. Read [CONTRIBUTING.md](CONTRIBUTING.md) to
 ## Author
 
 Built by **Pramod Yadav**, final-year student.
-[LinkedIn](https://www.linkedin.com/in/pramod-yadav-7810b5299) · [Email](mailto:pramodyadav2948@gmail.com) · [Portfolio and live demo](https://claude.ai/artifact/FbMhVEpPvKb2oTuFs9tChW)
+[LinkedIn](https://www.linkedin.com/in/pramod-yadav-7810b5299) · [Email](mailto:pramodyadav2948@gmail.com) · [GitHub](https://github.com/Prm01)
 
 If Recura saves you a model call, a star helps other people find it.
 
