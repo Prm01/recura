@@ -11,11 +11,13 @@ Semantic caching, multi-provider fallback, rate limiting and Prometheus metrics 
 ![Dependencies](https://img.shields.io/badge/dependencies-0-brightgreen)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue)](LICENSE)
 
-**[▶ Try the live demo](http://recura-demo.ap-south-2.elasticbeanstalk.com)** · [Watch the demo video](internal/server/static/media/recura-demo.mp4) · [Download](https://github.com/Prm01/recura/releases/latest) · [Quickstart](#quickstart) · [Benchmarks](#benchmarks) · [How it works](#how-it-works) · [Design decisions](docs/ARCHITECTURE.md)
+**[⬇ Download and run in 30 seconds](https://github.com/Prm01/recura/releases/latest)** · [Quickstart](#quickstart) · [Demo video (mp4)](https://github.com/Prm01/recura/raw/main/internal/server/static/media/recura-demo.mp4) · [Benchmarks](#benchmarks) · [How it works](#how-it-works) · [Design decisions](docs/ARCHITECTURE.md)
 
 </div>
 
-[![Recura demo video: click to watch a narrated 1 minute 45 second tour](internal/server/static/media/recura-demo-poster.jpg)](internal/server/static/media/recura-demo.mp4)
+![Recura in action: ask a question, then ask it again in different words and watch it answer from cache](docs/recura-demo.gif)
+
+<sub>Short preview. The full narrated 1:45 tour is in the [mp4](https://github.com/Prm01/recura/raw/main/internal/server/static/media/recura-demo.mp4), and it also plays on the gateway's own home page when you run it.</sub>
 
 ![Recura home page: live demo terminal, benchmarks and docs, served by the gateway itself](docs/screenshot-home.jpg)
 
