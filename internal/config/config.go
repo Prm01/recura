@@ -208,7 +208,7 @@ func providersFromEnv() []Provider {
 			}
 		case "gemini":
 			if k := os.Getenv("GEMINI_API_KEY"); k != "" {
-				out = append(out, Provider{Name: "gemini", Type: "gemini", APIKey: k, Model: envOr("RECURA_GEMINI_MODEL", "gemini-2.0-flash")})
+				out = append(out, Provider{Name: "gemini", Type: "gemini", APIKey: k, Model: envOr("RECURA_GEMINI_MODEL", "gemini-3.8-flash")})
 			}
 		case "ollama":
 			out = append(out, Provider{Name: "ollama", Type: "openai", BaseURL: envOr("OLLAMA_BASE_URL", "http://localhost:11434/v1"), Model: envOr("RECURA_OLLAMA_MODEL", "llama3.2")})
