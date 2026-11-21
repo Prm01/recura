@@ -1,0 +1,14 @@
+# SAMPLE DATA. Replace every line below with your real college's FAQ before sharing the bot.
+# Lines starting with # are ignored. Keep one fact per line; the bot answers only from these lines.
+Library: open Monday to Saturday, 9 AM to 8 PM. Closed on Sunday and public holidays. Students can borrow 3 books for 14 days with their ID card.
+Wi-Fi: connect to the campus network with your student ID as the username. To reset the Wi-Fi password, visit the computer centre during office hours.
+Fee payment: pay semester fees online on the college portal under Accounts > Fee Payment. The last date is shown on the notice board and the portal. A late fee applies after that date.
+ID card: apply for a new or lost ID card at the administrative office with a passport photo. A replacement takes about 5 working days.
+Bonafide certificate: request it on the portal under Student Services > Certificates, or at the academic section. It is usually ready in 2 working days.
+Exam form: fill the exam form on the portal before the deadline announced by the examination cell. Late forms need a fine.
+Results: results are published on the college portal. Contact the examination cell for re-evaluation or a missing marks issue.
+Hostel: hostel allotment is done by the hostel office after admission. Hostel fee is paid separately on the portal. Visitors are allowed only in the visitors' room.
+Scholarship: scholarship forms are announced on the notice board. Submit income certificate and previous marksheet to the scholarship section.
+Placement cell: register on the placement portal with your updated resume. Eligibility rules are announced before each company visit.
+Medical room: the medical room is open on working days from 9 AM to 5 PM. For emergencies contact the security desk.
+Helpdesk: for anything not covered here, visit the student helpdesk in the administrative building on working days from 10 AM to 4 PM.

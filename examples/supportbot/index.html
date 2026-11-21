@@ -1,0 +1,105 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Student Helpdesk Bot</title>
+<style>
+  :root{--bg:#F7F6F1;--card:#fff;--ink:#16191C;--mute:#6B7378;--line:#E4E2D9;--amber:#E0A100;--hit:#1E8A5A;--miss:#C2562A;--me:#16191C}
+  :root[data-theme="dark"]{--bg:#0F1315;--card:#171C1F;--ink:#EEF1EE;--mute:#9AA3A7;--line:#2A3135;--hit:#2FA674;--miss:#DD6A3B;--me:#E0A100}
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.5 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+  .wrap{max-width:720px;margin:0 auto;padding:16px;min-height:100dvh;display:flex;flex-direction:column}
+  header{display:flex;align-items:center;gap:12px;padding:8px 0 14px}
+  .logo{width:38px;height:38px;border-radius:10px;background:var(--amber);display:grid;place-items:center;font-weight:800;color:#16191C}
+  h1{font-size:1.15rem;margin:0}
+  header p{margin:0;color:var(--mute);font-size:.85rem}
+  .note{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:10px 14px;color:var(--mute);font-size:.85rem;margin-bottom:12px}
+  #log{flex:1;display:flex;flex-direction:column;gap:12px;padding:6px 0 12px}
+  .row{display:flex;flex-direction:column;max-width:88%}
+  .row.me{align-self:flex-end;align-items:flex-end}
+  .bubble{padding:10px 14px;border-radius:16px;background:var(--card);border:1px solid var(--line);white-space:pre-wrap;word-wrap:break-word}
+  .me .bubble{background:var(--me);color:#fff;border-color:var(--me)}
+  :root[data-theme="dark"] .me .bubble{color:#16191C}
+  .meta{display:flex;gap:8px;align-items:center;margin-top:6px;font-size:.78rem;color:var(--mute);flex-wrap:wrap}
+  .tag{padding:2px 8px;border-radius:999px;font-weight:600;border:1px solid currentColor}
+  .tag.hit{color:var(--hit)} .tag.miss{color:var(--miss)} .tag.bypass{color:var(--mute)}
+  .vote button{border:1px solid var(--line);background:var(--card);border-radius:8px;padding:2px 8px;cursor:pointer;font-size:.95rem;color:var(--ink)}
+  .vote button:hover{border-color:var(--amber)}
+  .vote.done button{opacity:.4;pointer-events:none}
+  .chips{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px}
+  .chips button{border:1px solid var(--line);background:var(--card);color:var(--ink);border-radius:999px;padding:6px 12px;cursor:pointer;font-size:.85rem}
+  .chips button:hover{border-color:var(--amber)}
+  form{display:flex;gap:8px;position:sticky;bottom:0;background:var(--bg);padding:8px 0 4px}
+  input{flex:1;font:inherit;padding:12px 14px;border-radius:12px;border:1px solid var(--line);background:var(--card);color:var(--ink)}
+  input:focus{outline:2px solid var(--amber);outline-offset:1px}
+  .send{border:0;background:var(--amber);color:#16191C;font-weight:700;border-radius:12px;padding:0 18px;cursor:pointer}
+  .send:disabled{opacity:.5}
+  footer{color:var(--mute);font-size:.78rem;padding:8px 0;text-align:center}
+  footer a{color:inherit}
+  .typing{color:var(--mute);font-style:italic}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div class="logo">?</div>
+    <div><h1>Student Helpdesk Bot</h1><p>Ask in English, Hindi or Hinglish</p></div>
+  </header>
+  <div class="note">This bot is part of an experiment to measure a response cache with real questions. Your questions are logged without your name. Please don't type passwords, OTPs or personal numbers.</div>
+  <div class="chips" id="chips"></div>
+  <div id="log" aria-live="polite"></div>
+  <form id="f">
+    <input id="q" maxlength="500" placeholder="Type your question..." autocomplete="off" required>
+    <button class="send" id="send">Send</button>
+  </form>
+  <footer>Powered by <a href="https://github.com/Prm01/recura" target="_blank" rel="noopener">Recura</a>, an open-source LLM gateway · <a href="/api/stats" target="_blank">live stats</a></footer>
+</div>
+<script>
+(function(){
+  var dark=false;try{dark=localStorage.getItem("bot-theme")==="dark"}catch(e){}
+  if(dark)document.documentElement.dataset.theme="dark";
+  var session="";try{session=localStorage.getItem("bot-session")||""}catch(e){}
+  if(!session){session=Math.random().toString(36).slice(2,10);try{localStorage.setItem("bot-session",session)}catch(e){}}
+
+  var log=document.getElementById("log"),q=document.getElementById("q"),send=document.getElementById("send");
+  var samples=["How do I reset my Wi-Fi password?","Library kab khula rehta hai?","How can I pay my semester fee?","ID card kho gaya kya karu?","How do I get a bonafide certificate?"];
+  var chips=document.getElementById("chips");
+  samples.forEach(function(s){var b=document.createElement("button");b.type="button";b.textContent=s;b.onclick=function(){ask(s)};chips.appendChild(b)});
+
+  function el(t,c,x){var e=document.createElement(t);if(c)e.className=c;if(x!=null)e.textContent=x;return e}
+  function add(who,text){var r=el("div","row "+who);r.appendChild(el("div","bubble",text));log.appendChild(r);r.scrollIntoView({block:"end",behavior:"smooth"});return r}
+
+  function ms(n){return n<10?n.toFixed(1)+" ms":n<1000?Math.round(n)+" ms":(n/1000).toFixed(1)+" s"}
+
+  function meta(row,d){
+    var m=el("div","meta");
+    var label=d.cache==="hit"?"from cache":d.cache==="bypass"?"private, not cached":"model call";
+    m.appendChild(el("span","tag "+(d.cache||"miss"),label));
+    m.appendChild(el("span","",ms(d.rtt_ms)));
+    var v=el("span","vote");
+    var up=el("button","","\u{1F44D}"),dn=el("button","","\u{1F44E}");
+    up.title="Helpful";dn.title="Not helpful";
+    function vote(ok){fetch("/api/feedback",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({id:d.id,helpful:ok})});v.classList.add("done")}
+    up.onclick=function(){vote(true)};dn.onclick=function(){vote(false)};
+    v.appendChild(up);v.appendChild(dn);m.appendChild(v);row.appendChild(m);
+  }
+
+  function ask(text){
+    chips.style.display="none";
+    add("me",text);q.value="";send.disabled=true;
+    var wait=add("bot","");wait.firstChild.className="bubble typing";wait.firstChild.textContent="Thinking...";
+    fetch("/api/chat",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({message:text,session:session})})
+      .then(function(r){return r.json().then(function(j){return {ok:r.ok,j:j}})})
+      .then(function(x){
+        if(!x.ok){wait.firstChild.className="bubble";wait.firstChild.textContent=x.j.error||"Something went wrong.";return}
+        wait.firstChild.className="bubble";wait.firstChild.textContent=x.j.answer;meta(wait,x.j);
+      })
+      .catch(function(){wait.firstChild.className="bubble";wait.firstChild.textContent="Network problem. Please try again."})
+      .then(function(){send.disabled=false;q.focus();wait.scrollIntoView({block:"end",behavior:"smooth"})});
+  }
+  document.getElementById("f").onsubmit=function(e){e.preventDefault();var t=q.value.trim();if(t)ask(t)};
+})();
+</script>
+</body>
+</html>

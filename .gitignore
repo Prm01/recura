@@ -6,3 +6,4 @@ coverage.*
 .env
 .DS_Store
 /dist/
+examples/supportbot/events.jsonl
