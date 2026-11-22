@@ -25,3 +25,31 @@ func TestComputeStats(t *testing.T) {
 		t.Fatalf("feedback wrong: %+v", s)
 	}
 }
+
+func TestTypedStatsIgnoreChipsAndRepeats(t *testing.T) {
+	evs := []event{
+		{Type: "chat", ID: "1", Session: "s1", Question: "How do I pay fees?", Cache: "miss", Source: "typed"},
+		{Type: "chat", ID: "2", Session: "s1", Question: "how do i pay fees? ", Cache: "hit", Source: "typed"}, // same student repeats: not counted
+		{Type: "chat", ID: "3", Session: "s2", Question: "How do I pay fees?", Cache: "hit", Source: "typed"},
+		{Type: "chat", ID: "4", Session: "s3", Question: "Tell me about Library", Cache: "hit", Source: "chip"}, // button click: not counted
+		{Type: "chat", ID: "5", Session: "s3", Question: "library timing?", Cache: "miss"},                      // old log line, no source: treated as typed
+	}
+	s := computeStats(evs)
+	if s.TypedQuestions != 3 || s.TypedHits != 1 || s.TypedHitRate != 33.3 {
+		t.Fatalf("typed stats wrong: %+v", s)
+	}
+	if s.Hits != 3 || s.Questions != 5 {
+		t.Fatalf("overall stats wrong: %+v", s)
+	}
+}
+
+func TestTopicsFrom(t *testing.T) {
+	faq := "Library: open 9 to 8.\nBonafide certificate: ask on the portal.\nID card: apply at the office.\nA very long sentence that is not a topic name at all, really: x\nLibrary: duplicate"
+	got := topicsFrom(faq)
+	if len(got) != 3 {
+		t.Fatalf("want 3 topics, got %+v", got)
+	}
+	if got[1].Icon != "file" || got[2].Icon != "id" {
+		t.Fatalf("icons wrong: %+v", got)
+	}
+}

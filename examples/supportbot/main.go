@@ -57,7 +57,15 @@ type event struct {
 	RttMs    float64 `json:"rtt_ms,omitempty"`
 	Provider string  `json:"provider,omitempty"`
 	Entry    string  `json:"entry,omitempty"`
+	Source   string  `json:"source,omitempty"` // "typed" or "chip" (a suggested button)
 	Helpful  *bool   `json:"helpful,omitempty"`
+}
+
+// topic is one card on the welcome screen, derived from a line of the FAQ.
+type topic struct {
+	Name     string `json:"name"`
+	Icon     string `json:"icon"`
+	Question string `json:"question"`
 }
 
 type bot struct {
@@ -65,6 +73,7 @@ type bot struct {
 	recuraKey string
 	system    string
 	logPath   string
+	topics    []topic
 	client    *http.Client
 
 	mu      sync.Mutex
@@ -103,6 +112,7 @@ func main() {
 		recuraKey: os.Getenv("RECURA_KEY"),
 		system:    systemPrompt + strings.TrimSpace(faq),
 		logPath:   *logPath,
+		topics:    topicsFrom(faq),
 		client:    &http.Client{Timeout: 90 * time.Second},
 		entries:   map[string]string{},
 	}
@@ -111,6 +121,10 @@ func main() {
 	mux.HandleFunc("GET /{$}", func(w http.ResponseWriter, _ *http.Request) {
 		w.Header().Set("Content-Type", "text/html; charset=utf-8")
 		w.Write(indexHTML)
+	})
+	mux.HandleFunc("GET /api/topics", func(w http.ResponseWriter, _ *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(b.topics)
 	})
 	mux.HandleFunc("POST /api/chat", b.chat)
 	mux.HandleFunc("POST /api/feedback", b.feedback)
@@ -140,6 +154,7 @@ func (b *bot) chat(w http.ResponseWriter, r *http.Request) {
 	var in struct {
 		Message string `json:"message"`
 		Session string `json:"session"`
+		Source  string `json:"source"`
 	}
 	if err := json.NewDecoder(http.MaxBytesReader(w, r.Body, 4096)).Decode(&in); err != nil {
 		jsonErr(w, 400, "bad request")
@@ -175,7 +190,11 @@ func (b *bot) chat(w http.ResponseWriter, r *http.Request) {
 	resp, err := b.client.Do(req)
 	rtt := float64(time.Since(start).Microseconds()) / 1000
 	id := newID()
-	ev := event{Type: "chat", TS: time.Now().UTC().Format(time.RFC3339), ID: id, Session: session, Question: msg, RttMs: rtt}
+	source := "typed"
+	if in.Source == "chip" {
+		source = "chip"
+	}
+	ev := event{Type: "chat", TS: time.Now().UTC().Format(time.RFC3339), ID: id, Session: session, Question: msg, RttMs: rtt, Source: source}
 	if err != nil {
 		ev.Cache = "error"
 		b.record(ev)
@@ -325,6 +344,12 @@ type stats struct {
 	HelpfulHit   string  `json:"helpful_cached"`
 	HelpfulMiss  string  `json:"helpful_model"`
 	DownCached   int     `json:"thumbs_down_on_cached"`
+
+	// Typed-only view: suggested-button clicks removed, and each student's
+	// repeats of the same question counted once. This is the honest number.
+	TypedQuestions int     `json:"typed_unique_questions"`
+	TypedHits      int     `json:"typed_unique_hits"`
+	TypedHitRate   float64 `json:"typed_hit_rate_pct"`
 }
 
 func computeStats(evs []event) stats {
@@ -332,11 +357,22 @@ func computeStats(evs []event) stats {
 	byID := map[string]event{}
 	sessions := map[string]bool{}
 	var hitMs, missMs []float64
+	seen := map[string]bool{}
 	for _, e := range evs {
 		if e.Type != "chat" {
 			continue
 		}
 		byID[e.ID] = e
+		if e.Source != "chip" && (e.Cache == "hit" || e.Cache == "miss") {
+			key := e.Session + "|" + strings.ToLower(strings.TrimSpace(e.Question))
+			if !seen[key] {
+				seen[key] = true
+				s.TypedQuestions++
+				if e.Cache == "hit" {
+					s.TypedHits++
+				}
+			}
+		}
 		if e.Session != "" {
 			sessions[e.Session] = true
 		}
@@ -357,6 +393,9 @@ func computeStats(evs []event) stats {
 	s.Students = len(sessions)
 	if s.Questions > 0 {
 		s.HitRate = round1(100 * float64(s.Hits) / float64(s.Questions))
+	}
+	if s.TypedQuestions > 0 {
+		s.TypedHitRate = round1(100 * float64(s.TypedHits) / float64(s.TypedQuestions))
 	}
 	s.MedianHitMs, s.MedianMissMs = median(hitMs), median(missMs)
 
@@ -418,7 +457,8 @@ func printReport(path string) {
 	}
 	fmt.Printf("Recura support-bot results\n==========================\n")
 	fmt.Printf("Questions answered   %d from %d students\n", s.Questions, s.Students)
-	fmt.Printf("From cache           %d (%.1f%%)\n", s.Hits, s.HitRate)
+	fmt.Printf("From cache           %d (%.1f%%)  all clicks and repeats included\n", s.Hits, s.HitRate)
+	fmt.Printf("Typed, unique        %d questions, %d from cache (%.1f%%)  <- the honest hit rate\n", s.TypedQuestions, s.TypedHits, s.TypedHitRate)
 	fmt.Printf("Model calls          %d\n", s.Misses)
 	fmt.Printf("Bypassed (personal)  %d\n", s.Bypassed)
 	fmt.Printf("Failed requests      %d (not counted above)\n", s.Errors)
@@ -450,4 +490,40 @@ func printReport(path string) {
 		}
 		fmt.Printf("  %dx  %s\n", t.n, t.q)
 	}
+}
+
+// topicsFrom turns FAQ lines like "Library: open Monday..." into welcome cards.
+func topicsFrom(faq string) []topic {
+	var out []topic
+	seen := map[string]bool{}
+	for _, line := range strings.Split(faq, "\n") {
+		name, _, ok := strings.Cut(line, ":")
+		name = strings.TrimSpace(name)
+		if !ok || name == "" || len(name) > 28 || len(strings.Fields(name)) > 4 || seen[strings.ToLower(name)] {
+			continue
+		}
+		seen[strings.ToLower(name)] = true
+		out = append(out, topic{Name: name, Icon: iconFor(name), Question: "Tell me about " + name})
+		if len(out) == 8 {
+			break
+		}
+	}
+	return out
+}
+
+func iconFor(name string) string {
+	n := strings.ToLower(name)
+	for _, m := range []struct{ key, icon string }{
+		{"librar", "book"}, {"wi-fi", "wifi"}, {"wifi", "wifi"}, {"internet", "wifi"},
+		{"certificate", "file"}, {"bonafide", "file"}, {"exam", "pen"}, {"result", "chart"},
+		{"fee", "card"}, {"payment", "card"}, {"id card", "id"}, {"identity", "id"},
+		{"hostel", "home"}, {"mess", "home"}, {"scholar", "award"},
+		{"placement", "briefcase"}, {"intern", "briefcase"}, {"medical", "heart"},
+		{"helpdesk", "help"}, {"help", "help"}, {"bus", "bus"}, {"sport", "award"},
+	} {
+		if strings.Contains(n, m.key) {
+			return m.icon
+		}
+	}
+	return "spark"
 }
