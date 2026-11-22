@@ -1,14 +1,20 @@
-# SAMPLE DATA. Replace every line below with your real college's FAQ before sharing the bot.
-# Lines starting with # are ignored. Keep one fact per line; the bot answers only from these lines.
-Library: open Monday to Saturday, 9 AM to 8 PM. Closed on Sunday and public holidays. Students can borrow 3 books for 14 days with their ID card.
-Wi-Fi: connect to the campus network with your student ID as the username. To reset the Wi-Fi password, visit the computer centre during office hours.
-Fee payment: pay semester fees online on the college portal under Accounts > Fee Payment. The last date is shown on the notice board and the portal. A late fee applies after that date.
-ID card: apply for a new or lost ID card at the administrative office with a passport photo. A replacement takes about 5 working days.
-Bonafide certificate: request it on the portal under Student Services > Certificates, or at the academic section. It is usually ready in 2 working days.
-Exam form: fill the exam form on the portal before the deadline announced by the examination cell. Late forms need a fine.
-Results: results are published on the college portal. Contact the examination cell for re-evaluation or a missing marks issue.
-Hostel: hostel allotment is done by the hostel office after admission. Hostel fee is paid separately on the portal. Visitors are allowed only in the visitors' room.
-Scholarship: scholarship forms are announced on the notice board. Submit income certificate and previous marksheet to the scholarship section.
-Placement cell: register on the placement portal with your updated resume. Eligibility rules are announced before each company visit.
-Medical room: the medical room is open on working days from 9 AM to 5 PM. For emergencies contact the security desk.
-Helpdesk: for anything not covered here, visit the student helpdesk in the administrative building on working days from 10 AM to 4 PM.
+# RGIPT helpdesk FAQ. Built from the official site rgipt.ac.in (checked 22 Nov 2026).
+# Lines starting with # are ignored. One fact per line. The bot answers only from these lines.
+# Items marked CHECK are not on the website: fill them in from your own knowledge before sharing.
+# Fees depend on admission year and category. Re-check the Semester Fee Structure page when notices change.
+Campuses: RGIPT has three campuses. Jais campus: Harbanshganj PO, Jais, Amethi, Uttar Pradesh 229304. Bengaluru campus: Kambalipura, Hosakote, Bengaluru, Karnataka 562165. Sivasagar campus: Gohain Gaon, Akhoiphutia, Sivasagar, Assam 785697.
+Fee structure: RGIPT publishes a separate fee PDF for each programme and admission year (B.Tech and 5-year IDD, BBA, MSc, MBA, M.Tech, PhD) on the Semester Fee Structure page of rgipt.ac.in under Academics. Fees differ by admission year, so check the PDF for your batch.
+Semester fee B.Tech: on the published B.Tech and IDD fee notice for hostel students, the fee for each semester is Rs 1,36,500 for GEN/OBC/EWS and Rs 1,11,500 for SC/ST/PwD. It includes tuition (Rs 1,00,000 for GEN/OBC/EWS, Rs 75,000 for SC/ST/PwD), examination Rs 2,000, registration Rs 1,000, amenities Rs 2,000, hostel establishment Rs 8,000, hostel seat rent Rs 8,000, medical Rs 500 and academic activities Rs 15,000. Confirm the amount for your admission year on the fee page.
+First semester fee: at admission the first semester also needs one-time non-refundable charges of Rs 6,000 (admission Rs 4,000, alumni membership Rs 1,000, student welfare fund Rs 1,000) and a refundable caution money of Rs 9,000. So the first semester total is Rs 1,51,500 for GEN/OBC/EWS and Rs 1,26,500 for SC/ST/PwD on that notice.
+Fee payment: bank details for admission fee payment are emailed with the offer letter. Offline payment is allowed; email the receipt with your application number to btech_admission@rgipt.ac.in. Application and registration fees are not refundable. CHECK: how current students pay semester fees and the last date.
+Hostel Jais: Jais has separate hostels for boys and girls, supervised by the Council of Wardens. Rooms are shared by two students and have a bed, study table, chair, almirah, fan and tube lights. There are RO water, geysers, round-the-clock power backup and Wi-Fi and LAN, and a common room with a TV in each hostel.
+Hostel rules: students must be back on campus by 8 PM unless the warden gives written permission. Visitors are not allowed in rooms and can meet students in the visitors' room from 9 AM to 8 PM. Guests cannot stay overnight. The mess is compulsory for hostellers. Heaters, coolers, irons, induction cooktops and music systems are not allowed, and students bring their own lock. Ragging, smoking, alcohol and drugs are strictly prohibited and can lead to expulsion.
+Hostel leave: for outstation leave during the semester, get approval from the Dean of Academic Affairs through your department, and the hostel office then issues a gate pass. Rooms must be vacated the day after the last working day of each semester unless you have written permission.
+Hostel Bengaluru: the Bengaluru campus has Block A (89 rooms) and Block B (126 rooms) for boys and a girls' hostel with 66 rooms. It has a mess, 24-hour internet, drinking water, washing machines, first aid, a gym, yoga and indoor sports rooms, TV rooms and a visitors' room. Hostel office email: HostelOffice_BengaluruCampus@rgipt.ac.in. Boys' hostel phone +91 96202 06776, girls' hostel phone +91 73551 75244.
+Scholarship merit: the Institute Merit-cum-Means Scholarship for B.Tech and IDD gives a 25% tuition waiver to 10% of students in each discipline. Family income must be Rs 5 lakh or less. Renewal needs a CPI/SPI of at least 6.5, no F, I or Z grades and an income certificate each year.
+Scholarship government: SC and ST students can apply for central scholarships on the National Scholarship Portal (scholarships.gov.in). State scholarships are available through the UP, MP, Bihar and Jharkhand portals. Details and eligibility are on the Academic Scholarships page of rgipt.ac.in.
+Placements: the Career Development Cell runs placements. Placement policy, placement status reports for each year, the list of recruiters and internship details are on the Placements section of rgipt.ac.in.
+Library: the Central Library is listed under Resources on rgipt.ac.in. CHECK: add the library opening hours and how many books a student can borrow.
+Academic calendar: the Academic Calendar, Ordinances and Course Structure are under Academics on rgipt.ac.in. The ERP portal is used for academic work. CHECK: add exam form and results steps.
+Summer internship: RIPE 2026 summer internship details are listed under Academics on rgipt.ac.in.
+Contact: for anything not covered here, use the Contact Us page on rgipt.ac.in or the telephone directory PDF linked on the website, or ask the concerned office in person.
