@@ -53,3 +53,23 @@ func TestTopicsFrom(t *testing.T) {
 		t.Fatalf("icons wrong: %+v", got)
 	}
 }
+
+func TestSavings(t *testing.T) {
+	evs := []event{
+		{Type: "chat", ID: "a", Session: "s", Question: "q1", Cache: "miss", RttMs: 2000, Tokens: 400},
+		{Type: "chat", ID: "b", Session: "s", Question: "q1", Cache: "hit", RttMs: 1, Tokens: 400},
+		{Type: "chat", ID: "c", Session: "s", Question: "q1", Cache: "hit", RttMs: 1, Tokens: 400},
+		{Type: "chat", ID: "d", Session: "s", Question: "otp 123456", Cache: "bypass", RttMs: 1500},
+	}
+	s := computeStats(evs)
+	if s.CallsAvoided != 2 || s.TokensAvoided != 800 {
+		t.Fatalf("calls=%d tokens=%d", s.CallsAvoided, s.TokensAvoided)
+	}
+	if s.WaitSavedSec < 3.9 || s.WaitSavedSec > 4.1 {
+		t.Fatalf("wait saved = %v, want ~4", s.WaitSavedSec)
+	}
+	// No misses measured yet: do not claim time saved.
+	if got := computeStats(evs[1:3]).WaitSavedSec; got != 0 {
+		t.Fatalf("claimed %v s without a measured model call", got)
+	}
+}

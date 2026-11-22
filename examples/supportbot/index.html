@@ -43,6 +43,16 @@
   /* progress */
   .level{display:flex;align-items:center;gap:10px;padding:8px 12px;border:1px solid var(--line);background:var(--card);border-radius:14px;box-shadow:var(--shadow);margin-bottom:8px}
   .level .badge{display:inline-flex;align-items:center;gap:6px;font-weight:700;font-size:.82rem;color:var(--fresh);background:var(--fresh-soft);border-radius:999px;padding:3px 10px;white-space:nowrap}
+  #live{display:none;margin-bottom:8px;border:1px solid var(--line);background:var(--card);border-radius:14px;box-shadow:var(--shadow);padding:8px 12px}
+  #live .top{display:flex;align-items:center;gap:6px;font-size:.74rem;font-weight:700;color:var(--mute);letter-spacing:.02em;text-transform:uppercase}
+  #live .top .pulse{width:8px;height:8px;border-radius:50%;background:var(--hit);animation:pulse 1.8s infinite}
+  @keyframes pulse{0%{box-shadow:0 0 0 0 rgba(23,128,63,.45)}70%{box-shadow:0 0 0 7px rgba(23,128,63,0)}100%{box-shadow:0 0 0 0 rgba(23,128,63,0)}}
+  #live .tiles{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:6px}
+  #live .tile{background:var(--hit-soft);border-radius:10px;padding:6px 10px;min-width:0}
+  #live .tile b{display:block;font-size:1.15rem;line-height:1.2;color:var(--hit);font-variant-numeric:tabular-nums}
+  #live .tile span{display:block;font-size:.72rem;color:var(--mute);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  #live .note{margin-top:5px;font-size:.7rem;color:var(--mute)}
+  @media(max-width:520px){#live .note{display:none}}
   .bar{flex:1;height:8px;border-radius:99px;background:var(--line);overflow:hidden}
   .bar i{display:block;height:100%;width:0;border-radius:99px;background:linear-gradient(90deg,#F2B42C,#E0A100);transition:width .5s cubic-bezier(.2,.8,.2,1)}
   .level small{color:var(--mute);font-size:.76rem;white-space:nowrap}
@@ -164,6 +174,16 @@
     <small id="lvText">Ask your first question</small>
   </div>
 
+  <section id="live" aria-label="Savings so far">
+    <div class="top"><span class="pulse"></span>Recura live · everyone so far</div>
+    <div class="tiles">
+      <div class="tile"><b id="lvCalls">0</b><span>AI calls avoided</span></div>
+      <div class="tile"><b id="lvTok">0</b><span>~tokens saved</span></div>
+      <div class="tile"><b id="lvWait">0s</b><span>waiting saved</span></div>
+    </div>
+    <div class="note" id="lvNote"></div>
+  </section>
+
   <main id="scroll">
     <div id="log" aria-live="polite">
       <section class="welcome" id="welcome">
@@ -260,8 +280,23 @@
   function community(){
     fetch("/api/stats").then(function(r){return r.json()}).then(function(s){
       if(s&&s.hits>0){$("communityN").textContent=s.hits+" instant answer"+(s.hits===1?"":"s")+" served";$("community").style.display="inline-flex"}
+      if(s&&s.questions>0){
+        $("live").style.display="block";
+        count($("lvCalls"),s.calls_avoided||0,"");
+        count($("lvTok"),s.tokens_avoided_approx||0,"");
+        count($("lvWait"),s.wait_saved_sec||0,"s");
+        $("lvNote").textContent=s.hits+" of "+s.questions+" answers came from Recura's memory"+(s.median_hit_ms&&s.median_miss_ms?" · "+ms(s.median_hit_ms)+" vs "+ms(s.median_miss_ms)+" for a fresh AI answer":"")+". Token and time figures are estimates.";
+      }
     }).catch(function(){});
   }
+  var shown={};
+  function count(node,to,suffix){
+    var from=shown[node.id]||0;shown[node.id]=to;
+    if(from===to||matchMedia("(prefers-reduced-motion: reduce)").matches){node.textContent=fmt(to)+suffix;return}
+    var t0=performance.now(),d=600;
+    (function step(t){var p=Math.min(1,(t-t0)/d),v=from+(to-from)*p;node.textContent=fmt(suffix==="s"?Math.round(v*10)/10:Math.round(v))+suffix;if(p<1)requestAnimationFrame(step)})(t0);
+  }
+  function fmt(n){return n>=10000?(n/1000).toFixed(n>=100000?0:1)+"k":String(n)}
   community();
 
   function userRow(text){

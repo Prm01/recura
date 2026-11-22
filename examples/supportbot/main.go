@@ -59,6 +59,9 @@ type event struct {
 	Entry    string  `json:"entry,omitempty"`
 	Source   string  `json:"source,omitempty"` // "typed" or "chip" (a suggested button)
 	Helpful  *bool   `json:"helpful,omitempty"`
+	// Tokens is a rough estimate (characters / 4) of what one model call for
+	// this question costs: FAQ + question in, answer out. Old log lines have 0.
+	Tokens int `json:"tokens,omitempty"`
 }
 
 // topic is one card on the welcome screen, derived from a line of the FAQ.
@@ -229,6 +232,7 @@ func (b *bot) chat(w http.ResponseWriter, r *http.Request) {
 	ev.GwMs, _ = strconv.ParseFloat(resp.Header.Get("X-Recura-Latency-Ms"), 64)
 	ev.Provider = resp.Header.Get("X-Recura-Provider")
 	ev.Entry = resp.Header.Get("X-Recura-Entry")
+	ev.Tokens = (len(b.system) + len(msg) + len(out.Choices[0].Message.Content)) / 4
 	b.record(ev)
 	if ev.Entry != "" {
 		b.mu.Lock()
@@ -350,6 +354,12 @@ type stats struct {
 	TypedQuestions int     `json:"typed_unique_questions"`
 	TypedHits      int     `json:"typed_unique_hits"`
 	TypedHitRate   float64 `json:"typed_hit_rate_pct"`
+
+	// Savings. Every cache hit is one model call that did not happen.
+	// TokensAvoided is an estimate (characters / 4), not a provider invoice.
+	CallsAvoided  int     `json:"calls_avoided"`
+	TokensAvoided int     `json:"tokens_avoided_approx"`
+	WaitSavedSec  float64 `json:"wait_saved_sec"`
 }
 
 func computeStats(evs []event) stats {
@@ -379,6 +389,7 @@ func computeStats(evs []event) stats {
 		switch e.Cache {
 		case "hit":
 			s.Hits++
+			s.TokensAvoided += e.Tokens
 			hitMs = append(hitMs, e.RttMs)
 		case "miss":
 			s.Misses++
@@ -398,6 +409,12 @@ func computeStats(evs []event) stats {
 		s.TypedHitRate = round1(100 * float64(s.TypedHits) / float64(s.TypedQuestions))
 	}
 	s.MedianHitMs, s.MedianMissMs = median(hitMs), median(missMs)
+	s.CallsAvoided = s.Hits
+	// Waiting time saved = hits x (typical model call - typical cached call).
+	// Only claimed once we have measured both kinds on this very bot.
+	if s.Hits > 0 && s.Misses > 0 && s.MedianMissMs > s.MedianHitMs {
+		s.WaitSavedSec = round1(float64(s.Hits) * (s.MedianMissMs - s.MedianHitMs) / 1000)
+	}
 
 	// Last vote per answer wins.
 	vote := map[string]bool{}
@@ -459,7 +476,7 @@ func printReport(path string) {
 	fmt.Printf("Questions answered   %d from %d students\n", s.Questions, s.Students)
 	fmt.Printf("From cache           %d (%.1f%%)  all clicks and repeats included\n", s.Hits, s.HitRate)
 	fmt.Printf("Typed, unique        %d questions, %d from cache (%.1f%%)  <- the honest hit rate\n", s.TypedQuestions, s.TypedHits, s.TypedHitRate)
-	fmt.Printf("Model calls          %d\n", s.Misses)
+	fmt.Printf("Model calls          %d  (%d avoided by the cache, ~%d tokens, ~%.0f s of waiting; estimates)\n", s.Misses, s.CallsAvoided, s.TokensAvoided, s.WaitSavedSec)
 	fmt.Printf("Bypassed (personal)  %d\n", s.Bypassed)
 	fmt.Printf("Failed requests      %d (not counted above)\n", s.Errors)
 	fmt.Printf("Median round trip    %.1f ms cached, %.1f ms model call\n", s.MedianHitMs, s.MedianMissMs)
