@@ -73,3 +73,27 @@ func TestSavings(t *testing.T) {
 		t.Fatalf("claimed %v s without a measured model call", got)
 	}
 }
+
+func TestLooksUnanswered(t *testing.T) {
+	for _, a := range []string{"I do not know. Please contact the helpdesk.", "Mujhe pata nahi, helpdesk se poochho.", "I don't have that information."} {
+		if !looksUnanswered(a) {
+			t.Errorf("should be unanswered: %q", a)
+		}
+	}
+	for _, a := range []string{"Hostel visitors may meet students in the visitors' room from 9 AM to 8 PM.", "The first semester fee is Rs 1,51,500."} {
+		if looksUnanswered(a) {
+			t.Errorf("should be answered: %q", a)
+		}
+	}
+}
+
+func TestUnansweredCounted(t *testing.T) {
+	s := computeStats([]event{
+		{Type: "chat", ID: "a", Session: "s", Question: "library timing?", Cache: "miss", RttMs: 2000, Unanswered: true},
+		{Type: "chat", ID: "b", Session: "s", Question: "library timing?", Cache: "hit", RttMs: 1, Unanswered: true},
+		{Type: "chat", ID: "c", Session: "s", Question: "fees?", Cache: "miss", RttMs: 2000},
+	})
+	if s.Unanswered != 2 {
+		t.Fatalf("unanswered = %d, want 2", s.Unanswered)
+	}
+}

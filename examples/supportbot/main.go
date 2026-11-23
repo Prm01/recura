@@ -62,6 +62,38 @@ type event struct {
 	// Tokens is a rough estimate (characters / 4) of what one model call for
 	// this question costs: FAQ + question in, answer out. Old log lines have 0.
 	Tokens int `json:"tokens,omitempty"`
+	// Unanswered is true when the answer says the FAQ does not cover the
+	// question. These are the lines to add to faq.txt next. Old log lines
+	// have no answer text, so they cannot be classified and stay false.
+	Unanswered bool `json:"unanswered,omitempty"`
+	// Error says why a request failed (status code and the start of the
+	// provider's message), so failures can be fixed instead of guessed at.
+	Error string `json:"error,omitempty"`
+}
+
+func snippet(b []byte) string {
+	s := strings.Join(strings.Fields(string(b)), " ")
+	if len(s) > 160 {
+		s = s[:160]
+	}
+	return s
+}
+
+// looksUnanswered reports whether the model said it could not answer from the
+// FAQ. The system prompt asks for exactly that in a plain sentence, so a short
+// list of phrases catches it in English and Hinglish.
+func looksUnanswered(answer string) bool {
+	a := strings.ToLower(answer)
+	for _, p := range []string{
+		"do not know", "don't know", "dont know", "not sure", "no information",
+		"not mentioned", "not covered", "cannot find", "can't find", "not in the faq",
+		"do not have", "don't have", "contact the helpdesk", "pata nahi", "nahi pata", "maloom nahi",
+	} {
+		if strings.Contains(a, p) {
+			return true
+		}
+	}
+	return false
 }
 
 // topic is one card on the welcome screen, derived from a line of the FAQ.
@@ -200,6 +232,7 @@ func (b *bot) chat(w http.ResponseWriter, r *http.Request) {
 	ev := event{Type: "chat", TS: time.Now().UTC().Format(time.RFC3339), ID: id, Session: session, Question: msg, RttMs: rtt, Source: source}
 	if err != nil {
 		ev.Cache = "error"
+		ev.Error = "gateway unreachable: " + snippet([]byte(err.Error()))
 		b.record(ev)
 		jsonErr(w, 502, "The gateway is not reachable right now.")
 		return
@@ -209,6 +242,7 @@ func (b *bot) chat(w http.ResponseWriter, r *http.Request) {
 
 	if resp.StatusCode == 429 {
 		ev.Cache = "error"
+		ev.Error = "HTTP 429 (rate limited): " + snippet(raw)
 		b.record(ev)
 		jsonErr(w, 429, "Too many questions too fast. Please wait a few seconds.")
 		return
@@ -222,6 +256,7 @@ func (b *bot) chat(w http.ResponseWriter, r *http.Request) {
 	}
 	if resp.StatusCode != 200 || json.Unmarshal(raw, &out) != nil || len(out.Choices) == 0 {
 		ev.Cache = "error"
+		ev.Error = fmt.Sprintf("HTTP %d: %s", resp.StatusCode, snippet(raw))
 		b.record(ev)
 		jsonErr(w, 502, "The model could not answer right now. Please try again.")
 		return
@@ -233,6 +268,7 @@ func (b *bot) chat(w http.ResponseWriter, r *http.Request) {
 	ev.Provider = resp.Header.Get("X-Recura-Provider")
 	ev.Entry = resp.Header.Get("X-Recura-Entry")
 	ev.Tokens = (len(b.system) + len(msg) + len(out.Choices[0].Message.Content)) / 4
+	ev.Unanswered = looksUnanswered(out.Choices[0].Message.Content)
 	b.record(ev)
 	if ev.Entry != "" {
 		b.mu.Lock()
@@ -360,6 +396,10 @@ type stats struct {
 	CallsAvoided  int     `json:"calls_avoided"`
 	TokensAvoided int     `json:"tokens_avoided_approx"`
 	WaitSavedSec  float64 `json:"wait_saved_sec"`
+
+	// Questions the FAQ could not answer (counted per answer, from the day
+	// this field was added).
+	Unanswered int `json:"unanswered"`
 }
 
 func computeStats(evs []event) stats {
@@ -373,6 +413,9 @@ func computeStats(evs []event) stats {
 			continue
 		}
 		byID[e.ID] = e
+		if e.Unanswered {
+			s.Unanswered++
+		}
 		if e.Source != "chip" && (e.Cache == "hit" || e.Cache == "miss") {
 			key := e.Session + "|" + strings.ToLower(strings.TrimSpace(e.Question))
 			if !seen[key] {
@@ -484,6 +527,69 @@ func printReport(path string) {
 	fmt.Printf("  helpful, cached    %s\n", s.HelpfulHit)
 	fmt.Printf("  helpful, model     %s\n", s.HelpfulMiss)
 	fmt.Printf("  thumbs-down on a cached answer: %d  (the closest real-world measure of a wrong cache hit)\n", s.DownCached)
+
+	// Why requests failed (only for requests logged after this was added).
+	if s.Errors > 0 {
+		why := map[string]int{}
+		for _, e := range evs {
+			if e.Type == "chat" && e.Cache == "error" {
+				k := e.Error
+				if k == "" {
+					k = "(reason not logged in older entries)"
+				}
+				why[k]++
+			}
+		}
+		fmt.Println("\nWhy requests failed:")
+		var ks []string
+		for k := range why {
+			ks = append(ks, k)
+		}
+		sort.Slice(ks, func(i, j int) bool {
+			if why[ks[i]] != why[ks[j]] {
+				return why[ks[i]] > why[ks[j]]
+			}
+			return ks[i] < ks[j]
+		})
+		for i, k := range ks {
+			if i == 5 {
+				break
+			}
+			fmt.Printf("  %dx  %s\n", why[k], k)
+		}
+	}
+
+	// The FAQ gaps: what students asked that faq.txt could not answer.
+	missing := map[string]int{}
+	for _, e := range evs {
+		if e.Type == "chat" && e.Unanswered {
+			missing[strings.ToLower(strings.TrimSpace(e.Question))]++
+		}
+	}
+	fmt.Printf("\nNot answered from the FAQ: %d (counted from the day this was added; older log lines cannot be checked)\n", s.Unanswered)
+	if len(missing) > 0 {
+		fmt.Println("Add these topics to faq.txt (most asked first):")
+		type mq struct {
+			q string
+			n int
+		}
+		var ml []mq
+		for q, n := range missing {
+			ml = append(ml, mq{q, n})
+		}
+		sort.Slice(ml, func(i, j int) bool {
+			if ml[i].n != ml[j].n {
+				return ml[i].n > ml[j].n
+			}
+			return ml[i].q < ml[j].q
+		})
+		for i, m := range ml {
+			if i == 20 {
+				break
+			}
+			fmt.Printf("  %dx  %s\n", m.n, m.q)
+		}
+	}
 
 	fmt.Println("\nMost repeated questions that hit the cache:")
 	count := map[string]int{}
